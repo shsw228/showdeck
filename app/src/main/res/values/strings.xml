@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">ShowDeck</string>
+    <string name="device_admin_description">ShowDeck を常駐ダッシュボードとして動作させるための端末管理設定です。</string>
+</resources>
