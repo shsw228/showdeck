@@ -35,12 +35,23 @@ Android 化した Amazon Echo Show 5 第2世代（コードネーム `cronos`）
 このリポジトリは Android 開発環境を前提にしている。
 
 ```sh
-brew install --cask temurin@17
+brew install openjdk@17                      # cask の temurin は sudo を要求するので formula を使う
 brew install --cask android-platform-tools   # adb
-brew install --cask android-studio           # SDK と Gradle Wrapper の生成
+brew install --cask android-commandlinetools # sdkmanager
+brew install --cask android-studio
+
+export JAVA_HOME=/opt/homebrew/opt/openjdk@17
+export ANDROID_HOME="$HOME/Library/Android/sdk"
+sdkmanager --sdk_root="$ANDROID_HOME" "platform-tools" "platforms;android-37.1" "build-tools;37.0.0"
 ```
 
-Android Studio で本リポジトリを開くと SDK と Gradle Wrapper が用意される。
+`local.properties` に `sdk.dir` を書けば `./gradlew` が通る。Gradle は Wrapper（9.7.0）で固定しているので、システムの Gradle バージョンは問わない。
+
+#### ツールチェーンの固定について
+
+- **AGP 9.3.1 / Gradle 9.7.0**。AGP 8.x は Gradle 9.6 以降が弾き、最新の androidx（core-ktx 1.19 / lifecycle 2.11）も AGP 9.1 以上を要求するため 9 系に乗せている
+- AGP 9 は Kotlin を内蔵しているので `org.jetbrains.kotlin.android` プラグインは適用しない
+- `compileSdk = 37` / `targetSdk = 28`。この差は意図的
 
 ### 2. 端末の素性を確認
 
@@ -103,6 +114,7 @@ Device Owner 化は端末にアカウントが 1 つでも登録されている�
 ## ロードマップ
 
 - [x] **1. 土台** — ランチャー化、大時計、日付、診断オーバーレイ、端末セットアップ
+  - release APK 1.3MB（R8 + ロケール絞り）、ユニットテスト 5 件
 - [ ] **2. 夜間モード** — バックライト直書き、深夜の画面 OFF と自動復帰
 - [ ] **3. 設定層** — DataStore による永続化、端末内 HTTP サーバ（WebCtl）による設定・ログ・自己更新
 - [ ] **4. 天気** — 気象庁 JSON、右カラムの実装

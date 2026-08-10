@@ -1,10 +1,13 @@
 [versions]
-agp = "8.7.3"
-kotlin = "2.0.21"
-coreKtx = "1.13.1"
-activityCompose = "1.9.3"
-composeBom = "2024.12.01"
-lifecycle = "2.8.7"
+# AGP 8.x では最新の androidx が解決できず（core-ktx 1.19 / lifecycle 2.11 が
+# AGP 9.1 以上を要求する）、Gradle 9.6 以降が AGP 8.x を弾くため 9 系に乗せている。
+agp = "9.3.1"
+kotlin = "2.4.10"
+coreKtx = "1.19.0"
+activityCompose = "1.13.0"
+composeBom = "2026.06.01"
+lifecycle = "2.11.0"
+junit = "4.13.2"
 
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
@@ -15,8 +18,8 @@ androidx-compose-ui = { group = "androidx.compose.ui", name = "ui" }
 androidx-compose-ui-tooling = { group = "androidx.compose.ui", name = "ui-tooling" }
 androidx-compose-ui-tooling-preview = { group = "androidx.compose.ui", name = "ui-tooling-preview" }
 androidx-compose-foundation = { group = "androidx.compose.foundation", name = "foundation" }
+junit = { group = "junit", name = "junit", version.ref = "junit" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }
-kotlin-android = { id = "org.jetbrains.kotlin.android", version.ref = "kotlin" }
 kotlin-compose = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "kotlin" }

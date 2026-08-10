@@ -1,12 +1,11 @@
 plugins {
     alias(libs.plugins.android.application)
-    alias(libs.plugins.kotlin.android)
     alias(libs.plugins.kotlin.compose)
 }
 
 android {
     namespace = "com.shsw228.showdeck"
-    compileSdk = 35
+    compileSdk = 37
 
     defaultConfig {
         applicationId = "com.shsw228.showdeck"
@@ -27,7 +26,10 @@ android {
             applicationIdSuffix = ".debug"
         }
         release {
-            isMinifyEnabled = false
+            // 1GB 機に置くので APK とメモリを削れるだけ削る。
+            // R8 を通さないと Compose だけで 18MB 前後になる。
+            isMinifyEnabled = true
+            isShrinkResources = true
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
             // 自前配布なので debug 鍵のまま release を焼ける状態にしておく。
             // 署名を変えると Device Owner の再設定が必要になるため、鍵は固定して運用する。
@@ -40,16 +42,26 @@ android {
         targetCompatibility = JavaVersion.VERSION_17
     }
 
-    kotlinOptions {
-        jvmTarget = "17"
-    }
-
     buildFeatures {
         compose = true
     }
 
+    androidResources {
+        // androidx が約 90 ロケール分のリソースを持ち込む。この端末では無駄。
+        localeFilters += listOf("ja", "en")
+    }
+
+    // 端末の ABI が確定したら絞る。check-device.sh の ro.product.cpu.abi を見て決める。
+    // splits { abi { isEnable = true; reset(); include("arm64-v8a") } }
+
     packaging {
         resources.excludes += "/META-INF/{AL2.0,LGPL2.1}"
+    }
+
+    lint {
+        // Play ストアの targetSdk 要件を課す検査。自前配布しかしないので該当しない。
+        // targetSdk を 28 に留めるのは意図的な設計判断（defaultConfig のコメント参照）。
+        disable += "ExpiredTargetSdkVersion"
     }
 }
 
@@ -66,4 +78,6 @@ dependencies {
 
     // material3 は意図的に入れていない。1GB 機なので依存とメモリを削り、
     // 必要な描画は foundation だけで組む。
+
+    testImplementation(libs.junit)
 }
