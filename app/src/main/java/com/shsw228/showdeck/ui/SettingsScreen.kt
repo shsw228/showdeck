@@ -123,6 +123,9 @@ private fun DisplaySection(
         // 固定すると選択ダイアログが出なくなる。普通の端末としても使いたい
         // なら切っておく。
         Toggle("Use as home app", settings.homeLauncher, palette) { actions.setHomeLauncher(it) }
+        Gap(DeckMetrics.Space2)
+        // 切ると SystemUI のスライダが出る（キーを消費しない）。
+        Toggle("Own volume bar", settings.volumeOverlay, palette) { actions.setVolumeOverlay(it) }
     }
 }
 

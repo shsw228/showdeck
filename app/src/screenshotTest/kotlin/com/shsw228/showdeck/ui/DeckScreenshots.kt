@@ -304,6 +304,17 @@ private fun Settings() = Deck(DeckDestination.SETTINGS) {
     )
 }
 
+/** 音量インジケータ。段の見え方を確認する。 */
+@PreviewTest
+@Preview(name = "音量", device = DEVICE_SPEC)
+@Composable
+private fun Volume() = Deck(DeckDestination.HOME) {
+    Box(Modifier.fillMaxSize()) {
+        HomeScreen(baseState, NOW, HomeLayout.TIMELINE, DeckPalette.Day, DeckActions())
+        VolumeOverlay(level = VolumeLevel(current = 4, max = 7), palette = DeckPalette.Day)
+    }
+}
+
 /** 発報中だけは昼夜のパレットに従わない。明るいままかを見る。 */
 @PreviewTest
 @Preview(name = "発報中", device = DEVICE_SPEC)

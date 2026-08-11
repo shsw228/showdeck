@@ -89,6 +89,12 @@ data class DeckSettings(
      * 固定すると選択ダイアログが出なくなり、他のランチャーに奪われない。
      * 既定は false（普通の Android 端末としても使えるようにしておく）。
      */
+    /**
+     * 音量キーを自分で捌いて独自のインジケータを出すか。
+     * false なら SystemUI のスライダに任せる（キーを消費しない）。
+     */
+    val volumeOverlay: Boolean,
+
     val homeLauncher: Boolean,
 ) {
     /** 空行と前後の空白を落とした購読先。 */
@@ -144,6 +150,7 @@ data class DeckSettings(
             clock24 = DeckConfig.CLOCK_24H,
             showSeconds = DeckConfig.SHOW_SECONDS,
             returnAfterSeconds = DeckConfig.RETURN_AFTER_SECONDS,
+            volumeOverlay = DeckConfig.VOLUME_OVERLAY,
             homeLauncher = DeckConfig.HOME_LAUNCHER,
         )
     }

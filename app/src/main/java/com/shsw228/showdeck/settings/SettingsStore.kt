@@ -62,6 +62,7 @@ class SettingsStore(private val context: Context) {
             prefs[SHOW_SECONDS] = settings.showSeconds
             prefs[RETURN_AFTER] = settings.returnAfterSeconds
             prefs[HOME_LAUNCHER] = settings.homeLauncher
+            prefs[VOLUME_OVERLAY] = settings.volumeOverlay
         }
     }
 
@@ -107,6 +108,7 @@ class SettingsStore(private val context: Context) {
             returnAfterSeconds =
                 (this[RETURN_AFTER] ?: d.returnAfterSeconds).coerceIn(0, 3600),
             homeLauncher = this[HOME_LAUNCHER] ?: d.homeLauncher,
+            volumeOverlay = this[VOLUME_OVERLAY] ?: d.volumeOverlay,
         )
     }
 
@@ -142,6 +144,7 @@ class SettingsStore(private val context: Context) {
         val SHOW_SECONDS = booleanPreferencesKey("show_seconds")
         val RETURN_AFTER = intPreferencesKey("return_after")
         val HOME_LAUNCHER = booleanPreferencesKey("home_launcher")
+        val VOLUME_OVERLAY = booleanPreferencesKey("volume_overlay")
     }
 }
 

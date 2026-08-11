@@ -123,6 +123,14 @@ object DeckConfig {
     const val RETURN_AFTER_SECONDS = 180
 
     /**
+     * 独自の音量インジケータを出すか。
+     *
+     * 既定は false。`SystemUI` が有効なら標準のスライダが出るので、
+     * 二重に持つ理由がない。SystemUI を畳んだ端末では true にする。
+     */
+    const val VOLUME_OVERLAY = false
+
+    /**
      * 既定のホームアプリとして固定するか。
      *
      * 既定は固定しない。固定は「この端末をダッシュボード専用にする」判断で、

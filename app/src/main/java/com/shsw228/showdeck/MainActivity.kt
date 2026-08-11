@@ -180,6 +180,9 @@ class MainActivity : ComponentActivity() {
                 setHomeLayout = { viewModel.updateSettingsOnDevice { s -> s.copy(homeLayout = it) } },
                 setClock24 = { viewModel.updateSettingsOnDevice { s -> s.copy(clock24 = it) } },
                 setShowSeconds = { viewModel.updateSettingsOnDevice { s -> s.copy(showSeconds = it) } },
+                setVolumeOverlay = { on ->
+                    viewModel.updateSettingsOnDevice { s -> s.copy(volumeOverlay = on) }
+                },
                 setHomeLauncher = { pinned ->
                     // ポリシーは即座に効かせる。設定だけ変えて再起動待ちにすると、
                     // 切ったつもりが効いていない状態になる。
@@ -391,13 +394,16 @@ class MainActivity : ComponentActivity() {
     /**
      * 音量キーを自分で捌く。
      *
-     * この ROM は SystemUI の音量ダイアログを持っていない（ステータスバーの
-     * 無効化を解除しても、キーを通しても出ない）。押しても何も起きないように
-     * 見えるので、ここで受けてインジケータを出す。
+     * `SystemUI` を畳んだ端末では標準のスライダが出ないので、その場合だけ
+     * ここで受ける。設定（`volumeOverlay`）が false ならキーを通す。
      *
      * 対象は**アラームの音**。この端末が鳴らすのはアラームと読み上げだけ。
      */
     override fun onKeyDown(keyCode: Int, event: android.view.KeyEvent?): Boolean {
+        // 切ってあるときはキーを通す。SystemUI のスライダが出る。
+        if (!viewModel.uiState.value.settings.volumeOverlay) {
+            return super.onKeyDown(keyCode, event)
+        }
         val direction = when (keyCode) {
             android.view.KeyEvent.KEYCODE_VOLUME_UP -> AudioManager.ADJUST_RAISE
             android.view.KeyEvent.KEYCODE_VOLUME_DOWN -> AudioManager.ADJUST_LOWER

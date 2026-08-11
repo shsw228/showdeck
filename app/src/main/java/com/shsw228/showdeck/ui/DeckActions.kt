@@ -66,4 +66,7 @@ data class DeckActions(
 
     /** 既定のホームアプリとして固定するか。 */
     val setHomeLauncher: (Boolean) -> Unit = {},
+
+    /** 独自の音量インジケータを出すか。false なら SystemUI に任せる。 */
+    val setVolumeOverlay: (Boolean) -> Unit = {},
 )
