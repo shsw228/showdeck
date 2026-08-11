@@ -6,7 +6,7 @@ name: build
 # コードと README を同じコミットで触ったときはちゃんと走る。
 on:
   push:
-    branches: [master]
+    branches: [main]
     paths-ignore:
       - '**/*.md'
       - 'docs/**'
