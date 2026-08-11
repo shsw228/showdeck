@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  この端末専用アプリなので、汎用の Android アプリを前提にした検査のうち
+  前提そのものが当たらないものを止めている。**個別に理由を書いて止める**
+  ことで、同じ id の別の指摘が出たときには気づけるようにしてある。
+-->
+<lint>
+
+    <!--
+      Play ストアの targetSdk 要件。自前配布しかしないので該当しない。
+      targetSdk を 28 に留めるのは意図的な設計判断（app/build.gradle.kts 参照）。
+    -->
+    <issue id="ExpiredTargetSdkVersion" severity="ignore" />
+
+    <!--
+      sharedUserId は API 29 で非推奨。lint は
+      android:sharedUserMaxSdkVersion="32" を足せと言うが、**足さない。**
+      このアプリは sharedUserId で system UID を得ることが成立条件で、
+      「ある SDK から先は外す」という宣言は、ROM を上げた瞬間に
+      バックライト制御と signature 権限が黙って死ぬ罠になる。
+      端末は Android 11 に固定されている。
+    -->
+    <issue id="Deprecated">
+        <ignore regexp="sharedUserId" />
+    </issue>
+
+    <!--
+      Android 16 から固定の画面向きが無視される、という警告。
+      この端末は物理的に横向きの 5.5 インチパネルで、回転しない。
+      targetSdk 28 のため Android 16 の挙動変更も適用されない。
+    -->
+    <issue id="DiscouragedApi">
+        <ignore regexp="Fixed screen orientations" />
+    </issue>
+
+    <!--
+      ChromeOS 向けの x86_64 ABI。この ROM は 32bit の armeabi-v7a で、
+      配布先は 1 台だけ。
+    -->
+    <issue id="ChromeOsAbiSupport" severity="ignore" />
+
+</lint>

@@ -99,11 +99,8 @@ android {
         resources.excludes += "/META-INF/{AL2.0,LGPL2.1}"
     }
 
-    lint {
-        // Play ストアの targetSdk 要件を課す検査。自前配布しかしないので該当しない。
-        // targetSdk を 28 に留めるのは意図的な設計判断（defaultConfig のコメント参照）。
-        disable += "ExpiredTargetSdkVersion"
-    }
+    // 止めている検査とその理由は app/lint.xml に書いてある。
+    // 1 か所に集めて、理由付きでしか止めないため。
 }
 
 dependencies {
