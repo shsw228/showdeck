@@ -49,6 +49,13 @@ Android 化した Echo Show 5 第2世代（`cronos`）向けの常駐ダッシ�
 - API キーの類は**リポジトリにも APK にも入れない。** Web 設定画面から入れ、`Secrets` で暗号化して DataStore に置く
 - 秘密は `ApiKey` のような `toString()` を潰した型で包む。`DeckSettings` はまるごとログに出しており、素の `String` で持つと `/logs` から平文が読める
 - 設定画面に既存の値を書き戻さない。伏せ字を出し、空なら現状維持にする
+- **Web 設定画面の経路を増やしたら認証を通すこと。** 認証は `serve()` の先頭で一括して行っている。パスごとに書く形にしない
+- **`hidden_api_policy` を緩めない。** 端末上の全アプリの制限まで下がる。ShowDeck はリフレクションを使っていない
+
+## 設定の書き込み
+
+- **`SettingsStore.update()` に画面側の `DeckSettings` をそのまま渡すときは、DataStore の最初の値が届いているか確かめる。** 届く前は既定値なので、丸ごと書き戻すと API キーも地点も既定に潰れる（実際に API キーを消した）
+- 一部のキーだけを変えたいときは `ensureWebPassword()` のように DataStore の編集トランザクション内で当該キーだけを触る
 
 ## Build, Test, and Development Commands
 

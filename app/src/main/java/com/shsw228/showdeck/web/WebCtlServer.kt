@@ -40,6 +40,13 @@ class WebCtlServer(
     )
 
     override fun serve(session: IHTTPSession): Response = runCatching {
+        // 認証は全経路の手前で行う。パスごとに書くと、後から増やした経路で
+        // 付け忘れる。system UID で動いている以上、素通しの経路を作らない。
+        val password = runBlocking { currentSettings() }.webPassword.value
+        if (!WebAuth.isAuthorized(session.headers["authorization"], password)) {
+            return@runCatching unauthorized()
+        }
+
         when {
             session.method == Method.POST && session.uri == "/save" -> handleSave(session)
             session.method == Method.POST && session.uri == "/timer" -> handleTimer(session)
@@ -108,6 +115,19 @@ class WebCtlServer(
         AlertCenter.dismiss()
         return redirectHome()
     }
+
+    /**
+     * 401 を返してブラウザに入力欄を出させる。
+     * パスワードは端末を長押しして診断オーバーレイで確認する。
+     */
+    private fun unauthorized(): Response =
+        newFixedLengthResponse(
+            Response.Status.UNAUTHORIZED,
+            MIME_PLAINTEXT,
+            "認証が必要です。ユーザー名は ${WebAuth.USER}、パスワードは端末を長押しして確認してください。",
+        ).apply {
+            addHeader("WWW-Authenticate", """Basic realm="ShowDeck", charset="UTF-8"""")
+        }
 
     private fun redirectHome(): Response =
         newFixedLengthResponse(Response.Status.REDIRECT, MIME_HTML, "").apply {

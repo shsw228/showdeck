@@ -43,8 +43,26 @@ class SettingsStore(private val context: Context) {
             prefs[PLACE_NAME] = settings.placeName
             // 平文では置かない。Keystore の鍵で暗号化した文字列だけを保存する。
             prefs[OWM_API_KEY] = Secrets.encrypt(settings.owmApiKey.value)
+            prefs[WEB_PASSWORD] = Secrets.encrypt(settings.webPassword.value)
             prefs[ALARM_ENABLED] = settings.alarmEnabled
             prefs[ALARM_MINUTES] = settings.alarmMinutes
+        }
+    }
+
+    /**
+     * Web 設定画面のパスワードが未生成なら作る。
+     *
+     * **[update] を使ってはいけない。** 画面側が持つ [DeckSettings] は、DataStore の
+     * 最初の値が届くまで既定値のままで、それを丸ごと書き戻すと API キーも地点も
+     * 既定に潰れる（実際にやって API キーを消した）。
+     * ここでは DataStore の編集トランザクションの中で当該キーだけを触る。
+     */
+    suspend fun ensureWebPassword() {
+        context.dataStore.edit { prefs ->
+            val current = Secrets.decrypt(prefs[WEB_PASSWORD].orEmpty())
+            if (current.isBlank()) {
+                prefs[WEB_PASSWORD] = Secrets.encrypt(Secrets.generatePassword())
+            }
         }
     }
 
@@ -66,6 +84,7 @@ class SettingsStore(private val context: Context) {
             weatherLon = (this[WEATHER_LON] ?: d.weatherLon).coerceIn(-180.0, 180.0),
             placeName = this[PLACE_NAME] ?: d.placeName,
             owmApiKey = ApiKey(Secrets.decrypt(this[OWM_API_KEY].orEmpty())),
+            webPassword = ApiKey(Secrets.decrypt(this[WEB_PASSWORD].orEmpty())),
             alarmEnabled = this[ALARM_ENABLED] ?: d.alarmEnabled,
             alarmMinutes = (this[ALARM_MINUTES] ?: d.alarmMinutes).coerceIn(0, 1439),
         )
@@ -86,6 +105,7 @@ class SettingsStore(private val context: Context) {
         val WEATHER_LON = doublePreferencesKey("weather_lon")
         val PLACE_NAME = stringPreferencesKey("place_name")
         val OWM_API_KEY = stringPreferencesKey("owm_api_key")
+        val WEB_PASSWORD = stringPreferencesKey("web_password")
         val ALARM_ENABLED = booleanPreferencesKey("alarm_enabled")
         val ALARM_MINUTES = intPreferencesKey("alarm_minutes")
     }

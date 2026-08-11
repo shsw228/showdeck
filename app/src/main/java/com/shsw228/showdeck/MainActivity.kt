@@ -38,6 +38,7 @@ import com.shsw228.showdeck.ui.ForecastOverlay
 import com.shsw228.showdeck.ui.theme.paletteFor
 import com.shsw228.showdeck.weather.WeatherSnapshot
 import com.shsw228.showdeck.weather.WeatherRepository
+import com.shsw228.showdeck.web.WebAuth
 import com.shsw228.showdeck.web.WebCtlServer
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
@@ -191,6 +192,12 @@ class MainActivity : ComponentActivity() {
             status = WebCtlServer.Status(mode.name, ipAddress, capabilities, lux, weather)
         }
 
+        // Web 設定画面のパスワードは初回起動時に端末で作る。
+        // ビルドに焼き込むと全端末で同じ値になり、リポジトリにも残ってしまう。
+        // 生成は DataStore 側で当該キーだけを触る（settings をまるごと書き戻すと、
+        // 最初の値が届く前の既定値で他の設定を潰す）。
+        LaunchedEffect(Unit) { settingsStore.ensureWebPassword() }
+
         LaunchedEffect(settings) { Log.i(TAG, "settings=$settings") }
         LaunchedEffect(mode) { Log.i(TAG, "mode=$mode wakeUntil=$wakeUntil lux=$lux") }
 
@@ -236,6 +243,8 @@ class MainActivity : ComponentActivity() {
                         capabilities = caps,
                         ipAddress = ipAddress,
                         webPort = DeckConfig.WEB_PORT,
+                        webUser = WebAuth.USER,
+                        webPassword = settings.webPassword.value,
                         onDismiss = { showDiagnostics = false },
                     )
                 }

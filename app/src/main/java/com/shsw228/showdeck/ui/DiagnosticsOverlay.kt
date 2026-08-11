@@ -33,6 +33,8 @@ fun DiagnosticsOverlay(
     capabilities: DeviceSetup.Capabilities,
     ipAddress: String?,
     webPort: Int,
+    webUser: String,
+    webPassword: String,
     onDismiss: () -> Unit,
 ) {
     Column(
@@ -70,6 +72,22 @@ fun DiagnosticsOverlay(
             style = TextStyle(
                 color = Color(0xFFF2EFE6),
                 fontSize = 18.sp,
+                fontFamily = FontFamily.Monospace,
+            ),
+        )
+
+        // Basic 認証の資格情報。端末の画面から読んで打ち込む前提なので、
+        // 隠さずそのまま出す。伏せると設定画面に入る手段が無くなる。
+        Spacer(Modifier.height(6.dp))
+        BasicText(
+            text = if (webPassword.isBlank()) {
+                "パスワードを生成中"
+            } else {
+                "$webUser / $webPassword"
+            },
+            style = TextStyle(
+                color = Color(0xFF9AA0A6),
+                fontSize = 15.sp,
                 fontFamily = FontFamily.Monospace,
             ),
         )

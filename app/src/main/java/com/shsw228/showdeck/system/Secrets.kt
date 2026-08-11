@@ -31,6 +31,22 @@ object Secrets {
     private const val IV_LENGTH = 12
     private const val TAG_BITS = 128
 
+    /**
+     * 端末の画面から読んで打ち込むためのパスワードを作る。
+     *
+     * 紛らわしい文字（l/1/o/0 など）を除き、`xxxx-xxxx-xxxx` の形に区切る。
+     * 5.5 インチの画面から桁を見失わずに読み取れることを優先している。
+     */
+    fun generatePassword(): String {
+        val alphabet = "abcdefghjkmnpqrstuvwxyz23456789"
+        val random = java.security.SecureRandom()
+        return (1..12)
+            .map { alphabet[random.nextInt(alphabet.length)] }
+            .joinToString("")
+            .chunked(4)
+            .joinToString("-")
+    }
+
     /** 平文を暗号化して base64 にする。失敗したら空文字を返し、保存を諦める。 */
     fun encrypt(plain: String): String {
         if (plain.isBlank()) return ""

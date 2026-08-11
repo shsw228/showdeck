@@ -58,8 +58,10 @@ object DeviceSetup {
         if (caps.canWriteSecureSettings) {
             // 7 = AC / USB / ワイヤレスのいずれかで給電中はスリープしない
             putGlobal(context, Settings.Global.STAY_ON_WHILE_PLUGGED_IN, 7)
-            // 内部 API を呼ぶために隠し API の検出を警告のみに落とす
-            putGlobal(context, "hidden_api_policy", 1)
+            // hidden_api_policy は緩めない。PowerManager#goToSleep を使う前提で
+            // 一度入れたが、消灯はバックライト 0 方式にしたのでリフレクションは
+            // 一切使っていない。端末上の全アプリの制限まで緩む設定を、
+            // 使っていない機能のために残さない。
             // 没入モードに入るたび SystemUI が「全画面表示」のダイアログを被せてくる。
             // 常時表示の端末では邪魔でしかないので既読扱いにする。
             putSecure(context, "immersive_mode_confirmations", "confirmed")

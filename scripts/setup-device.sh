@@ -76,11 +76,13 @@ run "locksettings set-disabled true"
 step "省電力から除外"
 run "dumpsys deviceidle whitelist +$PKG"
 
-step "隠し API の制限を解除"
-# 1 = 検出しても警告のみ。内部 API を呼ぶために必要。
-run "settings put global hidden_api_policy 1"
-# 没入モードに入るたび SystemUI が「全画面表示」のダイアログを被せてくるのを抑止。
+step "没入モードの確認ダイアログを抑止"
+# 没入モードに入るたび SystemUI が「全画面表示」のダイアログを被せてくる。
 run "settings put secure immersive_mode_confirmations confirmed"
+
+# hidden_api_policy は触らない。ShowDeck はリフレクションを一切使っておらず、
+# 緩めると端末上の全アプリの制限まで下がる。以前に設定した端末は
+# revert-device.sh が既定へ戻す。
 
 step "既定のランチャーに設定"
 run "cmd package set-home-activity $ACTIVITY"

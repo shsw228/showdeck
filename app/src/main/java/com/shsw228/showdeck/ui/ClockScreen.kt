@@ -29,6 +29,7 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
 import com.shsw228.showdeck.DeckConfig
@@ -82,7 +83,10 @@ fun ClockScreen(
         Row(
             modifier = Modifier
                 .fillMaxSize()
-                .offset(shift.first, shift.second)
+                // ラムダ版を使う。値が State 由来なので、非ラムダ版だと
+                // ずれるたびにこの階層が再コンポーズされる。ラムダ版なら
+                // layout フェーズだけで済む。アイドル時 1 コアの端末では効く。
+                .offset { with(density) { IntOffset(shift.first.roundToPx(), shift.second.roundToPx()) } }
                 .padding(horizontal = gutter, vertical = gutter * 0.6f),
             verticalAlignment = Alignment.CenterVertically,
         ) {

@@ -27,7 +27,10 @@
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
     <!-- 端末内 Web 設定画面のサーバソケットを開くために必要。 -->
     <uses-permission android:name="android.permission.INTERNET" />
-    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
+    <!--
+      RECEIVE_BOOT_COMPLETED は宣言していない。ランチャーなので起動は
+      system_server が面倒を見る。受信するコードが無い権限は残さない。
+    -->
 
     <application
         android:allowBackup="false"
@@ -59,16 +62,17 @@
                 <category android:name="android.intent.category.DEFAULT" />
             </intent-filter>
 
-            <!-- 開発中は通常のランチャーからも起動できるようにしておく -->
-            <intent-filter>
-                <action android:name="android.intent.action.MAIN" />
-                <category android:name="android.intent.category.LAUNCHER" />
-            </intent-filter>
+            <!--
+              LAUNCHER は付けない。system UID で動くアクティビティを
+              任意のアプリから起動できる口になる。開発中の手動起動は
+              `adb shell am start -n` で足りる。
+            -->
         </activity>
 
         <receiver
             android:name=".admin.AdminReceiver"
             android:exported="true"
+            android:description="@string/device_admin_description"
             android:permission="android.permission.BIND_DEVICE_ADMIN">
             <meta-data
                 android:name="android.app.device_admin"

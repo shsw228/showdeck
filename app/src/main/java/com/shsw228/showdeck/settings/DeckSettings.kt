@@ -44,6 +44,12 @@ data class DeckSettings(
     /** OpenWeatherMap の API キー。端末内で暗号化して保存する。 */
     val owmApiKey: ApiKey,
 
+    /**
+     * Web 設定画面の Basic 認証パスワード。初回起動時に端末で生成する。
+     * 診断オーバーレイ（長押し）で確認できる。
+     */
+    val webPassword: ApiKey,
+
     /** 毎日のアラーム。 */
     val alarmEnabled: Boolean,
     val alarmMinutes: Int,
@@ -70,6 +76,7 @@ data class DeckSettings(
             weatherLon = DeckConfig.WEATHER_LON,
             placeName = DeckConfig.WEATHER_PLACE_NAME,
             owmApiKey = ApiKey(""),
+            webPassword = ApiKey(""),
             alarmEnabled = DeckConfig.ALARM_ENABLED,
             alarmMinutes = timeToMinutes(DeckConfig.ALARM_TIME),
         )
