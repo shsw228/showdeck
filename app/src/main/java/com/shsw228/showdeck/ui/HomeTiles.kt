@@ -168,10 +168,12 @@ fun AgendaTile(
         }
 
         Column(Modifier.weight(1f).fillMaxWidth()) {
-            // 溢れたぶんは切る。Home でスクロールさせない（全部見るなら Calendar へ）。
+            // Home ではスクロールさせない（全部見るなら Calendar へ）。
+            // ただし**切ったことは必ず出す。** 黙って隠すと予定が無いのと区別が付かない。
             events.take(AGENDA_ROWS).forEach { event ->
                 AgendaRow(event, now, palette)
             }
+            Hidden(events.size - AGENDA_ROWS, palette)
         }
     }
 }
@@ -351,6 +353,7 @@ fun TimersTile(
             modifier = Modifier.weight(1f).fillMaxWidth(),
             verticalArrangement = Arrangement.Center,
         ) {
+            Hidden(timers.size - TIMER_ROWS, palette)
             timers.take(TIMER_ROWS).forEach { timer ->
                 Row(
                     modifier = Modifier.fillMaxWidth(),
@@ -468,6 +471,17 @@ fun Degrees(
 internal fun eventMeta(event: CalendarEvent): String {
     val time = if (event.allDay) "All day" else TIME.format(event.start)
     return if (event.location.isBlank()) time else "$time · ${event.location}"
+}
+
+/** 一覧に入らなかった件数。切ったことを黙っていると続きが無いのと区別が付かない。 */
+@Composable
+fun Hidden(count: Int, palette: DeckPalette) {
+    if (count <= 0) return
+    BasicText(
+        text = "+$count more",
+        style = DeckType.MetaSm.copy(color = palette.ink3),
+        modifier = Modifier.padding(top = DeckMetrics.Space1),
+    )
 }
 
 /** 度記号は数字より小さくする。 */

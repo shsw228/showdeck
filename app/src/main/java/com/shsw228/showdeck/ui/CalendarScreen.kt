@@ -221,7 +221,8 @@ private fun DetailPanel(
     actions: DeckActions,
     modifier: Modifier,
 ) {
-    Readout(palette, modifier) {
+    // 件名と場所は長さが読めない。ボタンに届かなくなるのでスクロールさせる。
+    Readout(palette, modifier.verticalScroll(rememberScrollState())) {
         Label("Selected", palette.readoutMut)
         Gap(DeckMetrics.Space2)
 

@@ -14,7 +14,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.text.BasicText
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.State
 import androidx.compose.runtime.derivedStateOf
@@ -26,6 +26,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.dp
 import com.shsw228.showdeck.ui.parts.ButtonLabel
 import com.shsw228.showdeck.ui.parts.DeckIcon
 import com.shsw228.showdeck.ui.parts.DeckIcons
@@ -164,9 +165,10 @@ private fun DeckHeader(
             Gap(DeckMetrics.Space3)
         }
 
-        BasicText(
+        Text(
             text = title,
-            style = DeckType.ScreenTitle.copy(color = palette.ink2),
+            style = DeckType.ScreenTitle,
+            color = palette.ink2,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
             modifier = Modifier.weight(1f),
@@ -207,30 +209,35 @@ private fun HeaderClock(
         derivedStateOf { DATE_LINE.format(nowState.value) }
     }
 
-    Column(horizontalAlignment = Alignment.End) {
-        // 下端で揃える。`alignByBaseline()` は使えない（[RollingClock] の中の
-        // `AnimatedContent` が遷移中に公開するベースラインが変わり、秒が跳ねる）。
-        // 代わりに [DeckType.Clock] の行高を 1.0 にして下端＝足元にしている。
-        Row(verticalAlignment = Alignment.Bottom) {
-            RollingClock(
-                text = timeText,
-                style = DeckType.Clock.copy(color = palette.ink),
-            )
-            if (suffix.isNotEmpty()) {
-                Gap(DeckMetrics.Space1)
-                // 秒も桁送りする。ただし毎秒動くので転がる時間は短く。
-                RollingClock(
-                    text = suffix,
-                    style = DeckType.ClockSuffix.copy(color = palette.ink3),
-                    rollMillis = SECONDS_ROLL_MILLIS,
-                )
-            }
-        }
-        Gap(DeckMetrics.Space1)
-        BasicText(
+    // 日付は時刻の**左**に置く。下に積むとヘッダが 2 段ぶんの高さを要り、
+    // その分だけ本体が削れる。横に並べれば 1 段で収まる。
+    //
+    // 下端で揃える。`alignByBaseline()` は使えない（[RollingClock] の中の
+    // `AnimatedContent` が遷移中に公開するベースラインが変わり、秒が跳ねる）。
+    // 代わりに [DeckType.Clock] の行高を 1.0 にして下端＝足元にしている。
+    Row(verticalAlignment = Alignment.Bottom) {
+        Text(
             text = dateText,
-            style = DeckType.DateLine.copy(color = palette.ink3, textAlign = TextAlign.End),
+            style = DeckType.DateLine,
+            color = palette.ink3,
+            textAlign = TextAlign.End,
+            maxLines = 2,
+            modifier = Modifier.width(DATE_COLUMN_WIDTH).padding(bottom = DeckMetrics.Space2),
         )
+        Gap(DeckMetrics.Space3)
+        RollingClock(
+            text = timeText,
+            style = DeckType.Clock.copy(color = palette.ink),
+        )
+        if (suffix.isNotEmpty()) {
+            Gap(DeckMetrics.Space1)
+            // 秒も桁送りする。ただし毎秒動くので転がる時間は短く。
+            RollingClock(
+                text = suffix,
+                style = DeckType.ClockSuffix.copy(color = palette.ink3),
+                rollMillis = SECONDS_ROLL_MILLIS,
+            )
+        }
     }
 }
 
@@ -302,6 +309,9 @@ private fun NavDock(
         }
     }
 }
+
+/** 日付欄の幅。「Tuesday, 11 August」が 2 行までで収まる量。 */
+private val DATE_COLUMN_WIDTH = 112.dp
 
 private val HOUR_24: DateTimeFormatter = DateTimeFormatter.ofPattern("HH:mm", Locale.ENGLISH)
 private val HOUR_12: DateTimeFormatter = DateTimeFormatter.ofPattern("hh:mm", Locale.ENGLISH)

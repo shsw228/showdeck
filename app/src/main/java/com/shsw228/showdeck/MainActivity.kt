@@ -33,6 +33,7 @@ import com.shsw228.showdeck.alert.AlertPlayer
 import com.shsw228.showdeck.settings.SettingsStore
 import com.shsw228.showdeck.system.DeviceSetup
 import com.shsw228.showdeck.system.HomeWatchdog
+import com.shsw228.showdeck.system.ServiceAdvertiser
 import com.shsw228.showdeck.system.openAndroidSettings
 import com.shsw228.showdeck.system.lightSensorFlow
 import com.shsw228.showdeck.system.localIpAddress
@@ -94,6 +95,9 @@ class MainActivity : ComponentActivity() {
     private lateinit var settingsStore: SettingsStore
     private var webServer: WebCtlServer? = null
 
+    /** 設定画面を mDNS で名乗る。IP を覚えなくても見つけられるように。 */
+    private val advertiser by lazy { ServiceAdvertiser(applicationContext) }
+
     private val viewModel: DeckViewModel by viewModels {
         // Context に依存するものはここで組み立てて渡す。
         // ViewModel が Context を持たないことで、実機なしでも試せる。
@@ -127,6 +131,7 @@ class MainActivity : ComponentActivity() {
         applyImmersiveMode()
         DeviceAdmin.disableStatusBar(this)
         startWebServer()
+        advertiser.start(DeckConfig.WEB_PORT)
 
         setContent { DeckRoot() }
     }
@@ -349,6 +354,7 @@ class MainActivity : ComponentActivity() {
     }
 
     override fun onDestroy() {
+        advertiser.stop()
         webServer?.stop()
         super.onDestroy()
     }

@@ -283,7 +283,9 @@ private fun StatusPanel(
     actions: DeckActions,
     modifier: Modifier,
 ) {
-    Readout(palette, modifier) {
+    // 権限の行数と文字の大きさで溢れるので縦スクロールさせる。
+    // 末尾の「Android settings」に届かないと、設定へ入る手段が無くなる。
+    Readout(palette, modifier.verticalScroll(rememberScrollState())) {
         Label("Web settings", palette.readoutMut)
         Gap(DeckMetrics.Space2)
         // ポートまで出す。IP だけでは繋げない。

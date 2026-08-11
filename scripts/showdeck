@@ -1,0 +1,50 @@
+#!/usr/bin/env bash
+# ShowDeck を mDNS で見つけて API を叩く。
+#
+#   showdeck state
+#   showdeck pomodoro start
+#   showdeck timer 3 tea
+#   showdeck timer-toggle 1234
+#   showdeck stop            # 発報を止める
+#
+# ホスト名は端末側が決めるので `showdeck.local` では引けない。
+# `_http._tcp` の "ShowDeck" を毎回 mDNS で解決してから叩く。
+set -euo pipefail
+
+PORT=8080
+SERVICE=ShowDeck
+
+resolve() {
+  # macOS は dns-sd、Linux は avahi。どちらも「解決先ホスト」だけ欲しい。
+  #
+  # dns-sd は自分で終わらないので timeout で切る。timeout は必ず 124 を返すので、
+  # `set -e` に殺されないよう `|| true` で受ける。
+  if command -v dns-sd >/dev/null 2>&1; then
+    { timeout 5 dns-sd -L "$SERVICE" _http._tcp 2>/dev/null || true; } \
+      | sed -n 's/.*can be reached at \([^ :]*\).*/\1/p' | head -1
+  elif command -v avahi-browse >/dev/null 2>&1; then
+    { timeout 5 avahi-browse -rtp _http._tcp 2>/dev/null || true; } \
+      | awk -F';' -v s="$SERVICE" '$4==s {print $7; exit}'
+  fi
+}
+
+HOST="${SHOWDECK_HOST:-$(resolve)}"
+if [ -z "$HOST" ]; then
+  echo "ShowDeck が見つかりません。SHOWDECK_HOST=<ip> で直接指定できます。" >&2
+  exit 1
+fi
+BASE="http://${HOST%.}:$PORT"
+
+get()  { curl -fsS "$BASE$1"; echo; }
+post() { curl -fsS -X POST "$BASE$1"; echo; }
+
+case "${1:-state}" in
+  state)        get /api/state ;;
+  pomodoro)     post "/api/pomodoro/${2:?start|pause|skip|stop}" ;;
+  timer)        post "/api/timers?minutes=${2:?分}&label=${3:-}" ;;
+  timer-toggle) post "/api/timers/${2:?id}/toggle" ;;
+  timer-reset)  post "/api/timers/${2:?id}/reset" ;;
+  stop)         post /api/alert/stop ;;
+  host)         echo "$BASE" ;;
+  *)            echo "使い方: showdeck {state|pomodoro|timer|timer-toggle|timer-reset|stop|host}" >&2; exit 2 ;;
+esac

@@ -39,6 +39,10 @@ class WebCtlServer(
 
     override fun serve(session: IHTTPSession): Response = runCatching {
         when {
+            // CLI 用の API。人が見る画面より先に判定する（経路が被らないよう
+            // /api/ で切ってあるが、増やしたときに取りこぼしたくない）。
+            session.uri.startsWith("/api/") -> handleApi(session)
+
             session.method == Method.POST && session.uri == "/save" -> handleSave(session)
             session.method == Method.POST && session.uri == "/timer" -> handleTimer(session)
             session.method == Method.POST && session.uri == "/stop" -> handleStop()
@@ -57,6 +61,23 @@ class WebCtlServer(
     }
 
     private fun handleIndex(): Response = html(renderIndex(state()))
+
+    /**
+     * CLI 用の API。
+     *
+     * POST の本文も query も同じ `parms` に載せる。`curl -d` でも
+     * `curl -X POST '...?minutes=3'` でも同じように書けるようにしておく。
+     */
+    private fun handleApi(session: IHTTPSession): Response {
+        val post = session.method == Method.POST
+        if (post) session.parseBody(HashMap())
+        val body = WebApi.handle(viewModel, session.uri, post, session.parms)
+            ?: return json(Response.Status.NOT_FOUND, """{"ok":false,"error":"unknown route"}""")
+        return json(Response.Status.OK, body)
+    }
+
+    private fun json(status: Response.IStatus, body: String) =
+        newFixedLengthResponse(status, "application/json; charset=utf-8", body)
 
     private fun handleSave(session: IHTTPSession): Response {
         // POST 本文は parseBody を呼ばないと params に載らない。
@@ -471,6 +492,14 @@ private fun renderIndex(state: DeckUiState): String {
 
   <div class="save"><button type="submit">保存</button></div>
 </form>
+
+<fieldset>
+  <legend>API</legend>
+  <p class="sub">CLI から叩く口。<code>scripts/showdeck</code> が mDNS で解決して叩く。</p>
+  <table>${WebApi.ROUTES.joinToString("") { "<tr><td>$it</td></tr>" }}</table>
+  <p class="hint">例: <code>scripts/showdeck pomodoro start</code>
+     / <code>scripts/showdeck timer 3 tea</code></p>
+</fieldset>
 
 <h2>権限の状態</h2>
 <table>$capsRows</table>

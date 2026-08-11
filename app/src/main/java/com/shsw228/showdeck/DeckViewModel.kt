@@ -78,6 +78,9 @@ class DeckViewModel(
     /** 消灯を一時的に解除している期限。タッチと照度変化で伸びる。 */
     private var wakeUntil: LocalDateTime? = null
 
+    /** 最後に取りに行った購読先。変わっていなければ取り直さない。 */
+    private var lastCalendarUrls: List<String>? = null
+
     val canControlBacklight: Boolean get() = backlight.canControl
 
     init {
@@ -159,8 +162,8 @@ class DeckViewModel(
 
     // --- カウントダウン ---
 
-    fun addTimer(minutes: Int) {
-        _uiState.update { it.copy(timers = Countdowns.add(it.timers, "", minutes, clock())) }
+    fun addTimer(minutes: Int, label: String = "") {
+        _uiState.update { it.copy(timers = Countdowns.add(it.timers, label, minutes, clock())) }
     }
 
     fun toggleTimer(id: Long) {
@@ -203,6 +206,7 @@ class DeckViewModel(
                 _uiState.update { it.copy(settings = settings) }
                 recomputeMode()
                 refreshWeather(settings)
+                refreshCalendar(settings)
             }
         }
     }
@@ -235,23 +239,35 @@ class DeckViewModel(
         publishAlertState()
     }
 
+    /** 定期的に取り直す。設定が変わったときの取得は [observeSettings] 側。 */
+    private fun observeCalendar() {
+        viewModelScope.launch {
+            while (true) {
+                delay(DeckConfig.CALENDAR_REFRESH_MINUTES * 60_000L)
+                refreshCalendar(_uiState.value.settings, force = true)
+            }
+        }
+    }
+
     /**
      * 予定を取り直す。
+     *
+     * 購読先が変わったときだけ取りに行く（[force] で定期取得）。設定が届く
+     * 前は購読先が空なので、ここを起動時に 1 回呼ぶだけでは何も起きない。
      *
      * 通信が死んでも画面は出す、が原則なので失敗しても状態は上書きしない
      * （[CalendarRepository] がキャッシュを返す）。
      */
-    private fun observeCalendar() {
-        viewModelScope.launch {
-            while (true) {
-                val urls = _uiState.value.settings.icsUrlList
-                if (urls.isNotEmpty()) {
-                    val feed = calendarRepository.load(urls, now = clock())
-                    _uiState.update { it.copy(calendar = feed) }
-                }
-                delay(DeckConfig.CALENDAR_REFRESH_MINUTES * 60_000L)
-            }
+    private suspend fun refreshCalendar(settings: DeckSettings, force: Boolean = false) {
+        val urls = settings.icsUrlList
+        if (urls.isEmpty()) {
+            lastCalendarUrls = null
+            return
         }
+        if (!force && urls == lastCalendarUrls) return
+        lastCalendarUrls = urls
+        val feed = calendarRepository.load(urls, now = clock())
+        _uiState.update { it.copy(calendar = feed) }
     }
 
     private fun applyDeviceSetup() {

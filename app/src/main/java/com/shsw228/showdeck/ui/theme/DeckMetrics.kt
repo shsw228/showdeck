@@ -33,10 +33,10 @@ object DeckMetrics {
     // --- 画面の骨格 ---
 
     /**
-     * ヘッダの下限の高さ。時計と日付行の 2 段が入る量。
+     * ヘッダの下限の高さ。日付は時刻の左に並ぶので 1 段ぶん。
      * 実際の高さは中身が決める（[com.shsw228.showdeck.ui.DeckScaffold]）。
      */
-    val HeaderHeight = 96.dp
+    val HeaderHeight = 76.dp
     val HeaderPadding = Space5
 
     /** 本体の外周。ヘッダの下端から続く見た目にしたいので上だけ詰める。 */
