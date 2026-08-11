@@ -58,10 +58,8 @@ fun Tile(
 ) = Panel(palette.paper, modifier, onClick, padding, content)
 
 /**
- * 濃色パネル。
- *
- * 昼夜どちらでも暗い面。**その画面の主役を 1 つだけ**ここに置く。
- * 濃い面が 2 つ並ぶと、どちらを見ればいいか分からなくなる。
+ * 濃色パネル。**その画面の主役を 1 つだけ**ここに置く。
+ * 2 枚並べるとどちらを見ればいいか分からなくなる。
  */
 @Composable
 fun Readout(
@@ -94,13 +92,9 @@ private fun Panel(
 /**
  * 押せることが分かるタップ。
  *
- * **押下の表現はプラットフォームに任せる。** 以前は alpha と時間を定数で
- * 直指定していたが（`PRESSED_ALPHA = 0.72f` など）、それでは端末の
- * アニメーション設定やモーション低減の設定を無視することになる。
- *
- * `ripple()` の色はテーマの `onSurface` から決まる。[DeckTheme] が
- * [DeckPalette] から `ColorScheme` を作って渡しているので、ここで色を
- * 指定する必要はない。
+ * 押下の表現はプラットフォームに任せる。端末のアニメーション設定や
+ * モーション低減の設定を尊重するのはこちらの仕事ではない。
+ * ripple の色はテーマの `onSurface` から決まるので指定も要らない。
  */
 @Composable
 fun Modifier.tappable(onClick: (() -> Unit)?): Modifier {
@@ -108,12 +102,7 @@ fun Modifier.tappable(onClick: (() -> Unit)?): Modifier {
     return clickable(interactionSource = null, indication = ripple(), onClick = onClick)
 }
 
-/**
- * アイコン。
- *
- * material の `Icon` は material ランタイムを引き込むので使わない。
- * 図形（`ImageVector`）だけ借りて、描画は foundation の [Image] に任せる。
- */
+/** アイコン。図形だけ借りて描画は [Image] に任せる。 */
 @Composable
 fun DeckIcon(
     image: ImageVector,
@@ -129,9 +118,7 @@ fun DeckIcon(
 
 /**
  * タイルの小見出し。`OUTSIDE` `TODAY` のたぐい。
- *
- * 大文字化はここでやる。呼び出し側に大文字の文字列を書くと、
- * 日本語を入れたくなったときに全部直すことになる。
+ * 大文字化はここでやる（呼び出し側に大文字を書かせない）。
  */
 @Composable
 fun Label(
@@ -146,12 +133,7 @@ fun Label(
     modifier = modifier,
 )
 
-/**
- * 破線の区切り。
- *
- * 実線にすると罫線が主張してタイルの中が窮屈になる。区切りがあることだけ
- * 伝わればよいので点線にする。
- */
+/** 破線の区切り。実線だと主張しすぎるので点線。 */
 @Composable
 fun DashedRule(
     color: Color,
@@ -173,13 +155,8 @@ fun DashedRule(
 }
 
 /**
- * 進捗リング。
- *
- * [fraction] は**残り**の割合。0 で空、1 で満。減るものを減る値で表さないと、
- * 呼び出し側が毎回 1 から引くことになる。
- *
- * 大きさ・線の太さ・中央の文字は [RingSpec] が組で持つ。別々に渡させると
- * どこかで組み合わせがずれる。
+ * 進捗リング。[fraction] は**残り**の割合（0 で空、1 で満）。
+ * 大きさ・線の太さ・中央の文字は [RingSpec] が組で持つ。
  */
 @Composable
 fun ProgressRing(
@@ -220,10 +197,8 @@ fun ProgressRing(
 }
 
 /**
- * 横棒の進捗。
- *
- * [fraction] は**経過**の割合。リングと逆なのは、タイマーは「どれだけ経ったか」を、
- * リングは「あとどれだけか」を見るものだから。
+ * 横棒の進捗。[fraction] は**経過**の割合。
+ * リングと逆なのは、タイマーは経過を、リングは残りを見るものだから。
  */
 @Composable
 fun ProgressBar(
@@ -249,12 +224,7 @@ fun ProgressBar(
     }
 }
 
-/**
- * 錠剤ボタン。この画面で押せるものは全部この形。
- *
- * 中身は呼び出し側が置く。アイコン付きのナビと文字だけのボタンで
- * 構成が違うため。
- */
+/** 錠剤ボタン。押せるものは全部この形。中身は呼び出し側が置く。 */
 @Composable
 fun PillButton(
     onClick: () -> Unit,
@@ -286,11 +256,7 @@ fun ButtonLabel(text: String, color: Color, style: TextStyle = DeckType.Button) 
 )
 
 /**
- * 親の幅に対する割合で横にずらす。
- *
- * `offset` は Dp しか取らないので、置く段で親の幅に掛ける。timeline の
- * ブロックと予報のレンジ棒がこれを使う。どちらも「時刻や気温の中での位置」を
- * 表すもので、dp では表しようがない。
+ * 親の幅に対する割合で横にずらす。時刻や気温の中での位置は dp では表せない。
  */
 fun Modifier.offsetFraction(fraction: Float) = this.then(
     Modifier.layout { measurable, constraints ->
@@ -301,11 +267,6 @@ fun Modifier.offsetFraction(fraction: Float) = this.then(
     },
 )
 
-/**
- * 縦横どちらでも使える隙間。
- *
- * Row の中なら幅、Column の中なら高さとして効く。向きごとに書き分けると、
- * 入れ子を組み替えたときに直し忘れる。
- */
+/** 縦横どちらでも使える隙間。Row なら幅、Column なら高さとして効く。 */
 @Composable
 fun Gap(size: Dp) = Spacer(Modifier.size(size))

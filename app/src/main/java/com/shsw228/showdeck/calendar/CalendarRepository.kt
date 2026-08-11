@@ -14,12 +14,9 @@ import java.time.ZoneId
 /**
  * ICS を購読して予定を取ってくる。
  *
- * [com.shsw228.showdeck.weather.WeatherRepository] と同じ作りにしてある。
- * 通信ライブラリは入れず、失敗したらディスクのキャッシュを読む。
- * **通信が死んでも画面は出す**のがこの端末の原則。
- *
- * 複数の URL を購読できる。仕事と私用でカレンダーが分かれているのが普通で、
- * 片方しか出ないと結局スマホを見ることになる。
+ * 通信ライブラリは入れず、失敗したらディスクのキャッシュを読む
+ * （**通信が死んでも画面は出す**のがこの端末の原則）。
+ * 複数の URL を購読できる。仕事と私用でカレンダーが分かれているのが普通。
  */
 class CalendarRepository(private val context: Context) {
 
@@ -52,15 +49,14 @@ class CalendarRepository(private val context: Context) {
             } else {
                 failures += "取得できません"
             }
-            // 落ちたぶんはキャッシュで埋める。1 本落ちても他は出す。
+            // 落ちたぶんはキャッシュで埋める。
             runCatching {
                 if (cache.exists()) events += IcsParser.parse(cache.readText(), zone, from, to)
             }
         }
 
         CalendarFeed(
-            // 複数の購読元に同じ予定が入っていることがある（共有カレンダー）。
-            // 同じ鍵のものは 1 件にまとめる。
+            // 共有カレンダーは複数の購読元に同じ予定が入る。鍵で 1 件にまとめる。
             events = events.distinctBy { it.uid }.sortedBy { it.start },
             fetchedAt = now,
             error = if (failures.size == urls.size) failures.first() else null,
@@ -79,8 +75,7 @@ class CalendarRepository(private val context: Context) {
                 Log.w(TAG, "ICS が ${connection.responseCode} を返した")
                 return null
             }
-            // 上限を設ける。年単位の予定が入った ICS は数 MB になり、
-            // 1GB 機で全部メモリに載せると他が落ちる。
+            // 上限を設ける。年単位の ICS は数 MB になり、1GB 機では他が落ちる。
             connection.inputStream.bufferedReader().use { it.readText(MAX_BYTES) }
         } finally {
             connection.disconnect()
@@ -107,10 +102,10 @@ class CalendarRepository(private val context: Context) {
         /** 4MB ぶんの文字。これを超える予定表は、この画面の用途では扱わない。 */
         const val MAX_BYTES = 4 * 1024 * 1024
 
-        /** 過去。今日まだ終わっていない予定を出すために少しだけ遡る。 */
+        /** 今日まだ終わっていない予定を出すために少しだけ遡る。 */
         const val BACK_DAYS = 1L
 
-        /** 未来。週ストリップが 1 週間ぶんなので、それを賄えればよい。 */
+        /** 週ストリップの 1 週間ぶんを賄えればよい。 */
         const val FORWARD_DAYS = 8L
     }
 }

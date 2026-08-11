@@ -15,10 +15,8 @@ data class RunningTimer(val endsAt: LocalDateTime, val label: String)
  * Android 化で Alexa が消えたぶん、キッチンタイマーと目覚ましは自前で持たないと
  * 端末の存在意義が落ちる。ここが「Alexa の穴を埋める」の中心。
  *
- * 以前は Compose の状態を持つグローバルシングルトンだったが、
- * 状態の持ち主が画面と二重になり、テストのたびに手で初期化する必要があった。
- * いまは状態の持ち主を [com.shsw228.showdeck.DeckViewModel] に一本化し、
- * ここは「時刻を渡すと次の状態を返す」だけの入れ物にしている。
+ * 状態の持ち主は [com.shsw228.showdeck.DeckViewModel] に一本化してあり、
+ * ここは「時刻を渡すと次の状態を返す」だけの入れ物。
  */
 class AlertScheduler {
 

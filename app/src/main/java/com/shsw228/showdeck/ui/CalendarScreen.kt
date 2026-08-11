@@ -43,10 +43,8 @@ import java.time.format.DateTimeFormatter
 import java.util.Locale
 
 /**
- * 予定。
- *
- * 左に週ストリップと一覧、右に選んだ予定の詳細。詳細を右に固定するのは、
- * 一覧をタップするたびに画面が切り替わると、次を選ぶのに戻る操作が要るため。
+ * 予定。左に週ストリップと一覧、右に選んだ予定の詳細。
+ * 詳細を右に固定するのは、次を選ぶのに戻る操作を要らせないため。
  */
 @Composable
 fun CalendarScreen(
@@ -112,10 +110,8 @@ private fun androidx.compose.foundation.layout.ColumnScope.Placeholder(
 }
 
 /**
- * 週ストリップ。
- *
- * 月曜始まりの 7 日。今日は色で、選択中は地で示す。両方を地で表すと
- * 今日を選んでいないときに今日が見つからない。
+ * 週ストリップ。月曜始まりの 7 日。今日は色で、選択中は地で示す
+ * （両方を地にすると、今日を選んでいないときに今日が見つからない）。
  */
 @Composable
 private fun WeekStrip(
@@ -173,7 +169,7 @@ private fun EventRow(
         modifier = Modifier
             .fillMaxWidth()
             .clip(DeckMetrics.RowShape)
-            // 選択は枠で示す。地の色を変えると、予定の色棒と喧嘩する。
+            // 選択は枠で示す。地の色は予定の色棒と喧嘩する。
             .border(
                 width = if (selected) SELECTION_BORDER else 0.dp,
                 color = if (selected) palette.tide else Color.Transparent,

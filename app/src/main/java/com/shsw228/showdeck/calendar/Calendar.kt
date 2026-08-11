@@ -6,10 +6,7 @@ import java.time.LocalDate
 import java.time.LocalDateTime
 
 /**
- * 画面に出す予定 1 件。
- *
- * ICS の VEVENT をそのまま持たず、必要なものだけに削ってある。画面が要るのは
- * 「いつ・何を・どこで」だけで、主催者や参加者は 5.5 インチに出しても読めない。
+ * 画面に出す予定 1 件。要るのは「いつ・何を・どこで」だけ。
  */
 data class CalendarEvent(
     val uid: String,
@@ -26,10 +23,8 @@ data class CalendarEvent(
     val startMinuteOfDay: Int get() = start.hour * 60 + start.minute
 
     /**
-     * 色。
-     *
-     * ICS は色を持たないので UID から決める。時刻や並び順から決めると、
-     * 予定が 1 つ増えただけで全部の色が入れ替わり、色で見分けられなくなる。
+     * 色。ICS は色を持たないので UID から決める。時刻や並び順から決めると、
+     * 予定が 1 つ増えただけで全部入れ替わって見分けられない。
      */
     val tone: EventTone
         get() = EventTone.entries[Math.floorMod(uid.hashCode(), EventTone.entries.size)]
@@ -39,10 +34,8 @@ data class CalendarEvent(
 }
 
 /**
- * 予定の一覧。
- *
- * 取得できたかどうかと中身を分けて持つ。空の一覧は「予定が無い日」でも
- * 「取りに行けていない」でも起きるが、画面に出すべき文言が違う。
+ * 予定の一覧。取得できたかと中身を分けて持つ。空の一覧は「予定が無い日」でも
+ * 「取りに行けていない」でも起きるが、出すべき文言が違う。
  */
 data class CalendarFeed(
     val events: List<CalendarEvent> = emptyList(),

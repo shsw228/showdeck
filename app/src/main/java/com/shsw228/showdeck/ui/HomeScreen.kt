@@ -33,12 +33,7 @@ import com.shsw228.showdeck.ui.theme.RingSpec
 import com.shsw228.showdeck.ui.theme.color
 import java.time.LocalDateTime
 
-/**
- * Home の並べ方。
- *
- * 同じタイル（[HomeTiles]）を 3 通りに並べる。どれが良いかは実際に部屋に
- * 置いて数日使わないと分からないので、設定で切り替えられるようにしてある。
- */
+/** Home の並べ方。同じタイルを 3 通りに並べる。設定で切り替えられる。 */
 enum class HomeLayout {
     /** 4 種類を均等に。何も特別扱いしない。 */
     GRID,
@@ -69,10 +64,7 @@ fun HomeScreen(
 }
 
 /**
- * 均等割り。左に天気、中央に予定、右上に集中、右下にタイマー。
- *
- * 天気と予定を縦いっぱいに取るのは、どちらも中身が可変で、
- * 高さが要るため。集中とタイマーは 1 行で足りる。
+ * 均等割り。天気と予定は中身が可変なので縦いっぱい、集中とタイマーは 1 行。
  */
 @Composable
 private fun GridLayout(
@@ -125,12 +117,7 @@ private fun GridLayout(
     }
 }
 
-/**
- * 集中を主役に。
- *
- * 濃色パネルを 1 枚だけ大きく置き、残りを細く添える。濃い面が 2 つ並ぶと
- * どちらを見ればいいか分からなくなるので、ここでは集中だけを濃くする。
- */
+/** 集中を主役に。1 枚だけ大きく置き、残りを細く添える。 */
 @Composable
 private fun HeroLayout(
     state: DeckUiState,
@@ -171,12 +158,7 @@ private fun HeroLayout(
     }
 }
 
-/**
- * 「このあと」の帯。
- *
- * 一覧ではなく直近 3 件だけを横に流す。Home に全部出しても読まないし、
- * 読みたくなった時点で Calendar に行けばいい。
- */
+/** 「このあと」の帯。直近 3 件だけ横に流す（全部見るなら Calendar へ）。 */
 @Composable
 private fun NextUpStrip(
     events: List<CalendarEvent>,
@@ -234,9 +216,7 @@ private fun NextUpStrip(
 }
 
 /**
- * 一日の流れ。
- *
- * 上に帯、下に 3 タイル。帯は「いま一日のどこにいるか」を示すためのもので、
+ * 一日の流れ。帯は「いま一日のどこにいるか」を示すもので、
  * 個々の予定を読むためではない。だから細く、色だけで見せる。
  */
 @Composable
@@ -287,12 +267,8 @@ private fun TimelineLayout(
 }
 
 /**
- * 一日の帯。
- *
- * 横位置は [DAY_START]..[DAY_END] を 0..1 に写して決める。夜中まで含めた
- * 24 時間で描くと、実際に予定が入る時間帯が真ん中の狭い範囲に潰れる。
- *
- * 幅は割合で置く。ここで px を計算し始めると、また寸法合わせに戻る。
+ * 一日の帯。横位置は [DAY_START]..[DAY_END] を 0..1 に写して決める。
+ * 24 時間で描くと、実際に予定が入る時間帯が真ん中に潰れる。
  */
 @Composable
 private fun DayTimeline(
@@ -328,7 +304,7 @@ private fun DayTimeline(
             timed.forEach { event ->
                 val left = position(event.startMinuteOfDay)
                 val right = position(event.startMinuteOfDay + event.duration.toMinutes().toInt())
-                // 短い予定でも触れる幅は残す。0 幅だと存在が消える。
+                // 短い予定でも 0 幅にしない。存在が消える。
                 val width = (right - left).coerceAtLeast(MIN_BLOCK)
 
                 Box(
@@ -350,7 +326,7 @@ private fun DayTimeline(
                 }
             }
 
-            // いまの位置。1 本だけ違う色にして、帯の中の現在地を示す。
+            // いまの位置。1 本だけ違う色にする。
             Box(
                 modifier = Modifier
                     .offsetFraction(position(now.hour * 60 + now.minute))
@@ -363,7 +339,7 @@ private fun DayTimeline(
 }
 
 
-/** 帯に描く時間帯。生活時間の外を描いても場所を食うだけ。 */
+/** 帯に描く時間帯。 */
 private const val DAY_START = 7 * 60
 private const val DAY_END = 22 * 60
 

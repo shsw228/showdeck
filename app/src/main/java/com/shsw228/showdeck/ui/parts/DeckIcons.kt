@@ -18,13 +18,7 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import com.shsw228.showdeck.weather.WeatherIconKind
 
 /**
- * アイコン。
- *
- * 以前は 9 種類の天気と 5 種類のナビを Canvas で描いていた。低解像度で
- * 形が潰れないよう塗りで持つ、といった工夫が要ったが、そもそも標準の
- * アイコンで足りるものを自前で持つ理由がなかった。
- *
- * `Outlined` で揃えているのは、この画面が細い線で構成されているため。
+ * アイコン。`Outlined` で揃える。この画面は細い線で構成されているので、
  * `Filled` を混ぜるとアイコンだけが重くなる。
  */
 object DeckIcons {
@@ -36,12 +30,7 @@ object DeckIcons {
     val Timers = Icons.Outlined.Timer
     val Back = Icons.Outlined.ArrowBack
 
-    /**
-     * 天気。
-     *
-     * 夜の晴れ／曇りを分けているのは、同じ「晴れ」でも昼夜で見え方の
-     * 期待が違うため。太陽のアイコンが夜に出ると違和感がある。
-     */
+    /** 天気。夜は太陽を出さない（同じ「晴れ」でも昼夜で期待が違う）。 */
     fun weather(kind: WeatherIconKind): ImageVector = when (kind) {
         WeatherIconKind.SUN -> Icons.Outlined.WbSunny
         WeatherIconKind.MOON -> Icons.Outlined.NightsStay

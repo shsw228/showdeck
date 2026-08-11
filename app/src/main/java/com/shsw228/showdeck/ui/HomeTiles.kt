@@ -46,14 +46,10 @@ import java.time.format.DateTimeFormatter
 import java.util.Locale
 
 /**
- * Home に置くタイル。
+ * Home に置くタイル 4 種（外の天気・今日の予定・集中・タイマー）。
  *
- * デザインには Home のレイアウトが 3 つあるが、**出てくるタイルは同じ 4 種類**
- * （外の天気・今日の予定・集中・タイマー）で、並べ方と大きさが違うだけ。
- * タイルをここで 1 回ずつ定義し、並べ方は [HomeScreen] が持つ。
- *
- * 大きさの違いは引数で受ける。同じタイルを大小 2 つ書くと、片方だけ直して
- * ずれる。
+ * 並べ方は [HomeScreen] が 3 通り持つが、タイルの定義はここに 1 つずつ。
+ * 大小の違いは引数で受ける（同じタイルを 2 つ書くと片方だけ直してずれる）。
  */
 
 /** 外の天気。気温を主役に、下に推移と最高最低を添える。 */
@@ -64,11 +60,8 @@ fun OutsideTile(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
     /**
-     * 縦が浅いタイルか。
-     *
-     * 浅いときは気温と天気だけにする。推移の棒と最高最低を無理に詰めると、
-     * 実際に下の行が切れた。**入る情報量はタイルの高さで決まる**もので、
-     * どの並べ方でも同じ中身を出そうとするのが間違い。
+     * 縦が浅いタイルか。浅いときは気温と天気だけにする。
+     * **入る情報量はタイルの高さで決まる。**
      */
     compact: Boolean = false,
 ) {
@@ -123,16 +116,13 @@ fun OutsideTile(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween,
         ) {
-            // 「最高」「最低」「降水」と書くと 3 分割したタイルの幅で折り返した。
-            // 矢印なら 1 文字で済み、意味も落ちない。
+            // 3 分割したタイルの幅では語を書くと折り返す。矢印なら 1 文字。
             BasicText(
                 text = "↑${weather.highC ?: "--"}°  ↓${weather.lowC ?: "--"}°",
                 style = DeckType.Meta.copy(color = palette.ink3),
                 maxLines = 1,
             )
-            // 傘の絵文字を使っていたが、同梱した 2 書体のどちらにも無く、
-            // 代替グリフに落ちて矢印のように見えた。**字が入っているか
-            // 分からない記号は使わない。**
+            // 同梱した 2 書体に入っている字だけを使う。絵文字は代替グリフに落ちる。
             BasicText(
                 text = "rain ${weather.popPercent ?: 0}%",
                 style = DeckType.Meta.copy(color = palette.ink3),
@@ -178,9 +168,7 @@ fun AgendaTile(
         }
 
         Column(Modifier.weight(1f).fillMaxWidth()) {
-            // 溢れたぶんは切る。スクロールできる一覧を Home に置くと、
-            // 「下にもあるかもしれない」を毎回確かめることになる。
-            // 全部見たいときは Calendar 画面へ行く。
+            // 溢れたぶんは切る。Home でスクロールさせない（全部見るなら Calendar へ）。
             events.take(AGENDA_ROWS).forEach { event ->
                 AgendaRow(event, now, palette)
             }
@@ -222,12 +210,7 @@ private fun AgendaRow(event: CalendarEvent, now: LocalDateTime, palette: DeckPal
     }
 }
 
-/**
- * 「あと 2 時間」のチップ。
- *
- * 1 時間以内のものだけ色を付ける。全部に色が付いていると、
- * 直前のものが埋もれる。
- */
+/** 「あと 2 時間」のチップ。1 時間以内だけ色を付ける。 */
 @Composable
 fun RelativeChip(event: CalendarEvent, now: LocalDateTime, palette: DeckPalette) {
     val minutes = Duration.between(now, event.start).toMinutes()
@@ -276,12 +259,8 @@ fun FocusTile(
     modifier: Modifier = Modifier,
     spec: RingSpec = RingSpec.Compact,
 ) {
-    // 他のタイルと同じ明るい面。
-    //
-    // 濃色パネルで置いていたら、Home で 1 枚だけ色が反転して浮いた。
-    // 濃色は「その画面の主役 1 つ」に取っておく決めなので、Home に並ぶ
-    // 4 枚のうち 1 枚だけを濃くする理由がない。主役として置きたいときは
-    // 大きさ（[spec]）と文字の段で示す。
+    // 他のタイルと同じ明るい面。濃色は各画面の主役 1 枚に取っておく。
+    // 主役として置きたいときは大きさ（[spec]）と文字の段で示す。
     Tile(palette, modifier, onClick) {
         Row(
             modifier = Modifier.fillMaxSize(),
@@ -308,8 +287,7 @@ fun FocusTile(
                         focusLabel.isNotBlank() -> focusLabel
                         else -> pomodoro.phase.label
                     },
-                    // 主役として置くときは大きく。同じタイルを大小で使うので、
-                    // 文字の段もリングの大きさに合わせて上げる。
+                    // 文字の段はリングの大きさに合わせる。
                     style = if (spec == RingSpec.Compact) {
                         DeckType.Body.copy(color = palette.ink)
                     } else {
@@ -325,8 +303,7 @@ fun FocusTile(
                         append(" of ")
                         append(settings.pomodoroDailyGoal)
                         append(" today")
-                        // 区間名は名前を出したぶん行き場が無くなるので、
-                        // ここに添える。走っているのが作業か休憩かは要る情報。
+                        // 作業か休憩かは要る情報なので、名前を出しても落とさない。
                         pomodoro?.let { append(" · ${it.phase.label.lowercase()}") }
                     },
                     style = DeckType.Meta.copy(color = palette.ink3),
@@ -408,10 +385,8 @@ fun TimersTile(
 }
 
 /**
- * 気温の棒グラフ。
- *
- * 目盛りは打たない。読み取るための図ではなく、これから上がるのか
- * 下がるのかが一目で分かればよい。高さは表示範囲の中で正規化する。
+ * 気温の棒グラフ。目盛りは打たない（上がるか下がるかが分かればよい）。
+ * 高さは表示範囲の中で正規化する。
  */
 @Composable
 fun TemperatureBars(
@@ -442,12 +417,8 @@ fun TemperatureBars(
                 )
                 Gap(DeckMetrics.Space1)
 
-                // 棒は**上下のラベルを引いた残り**に収める。
-                //
-                // 以前は棒に直接 fillMaxHeight(比率) を付けていた。Column の
-                // 子に付けた fillMaxHeight は「残り」ではなく親から来た最大高を
-                // 見るので、棒が全体高の 8 割を取り、下の時刻ラベルを押し出して
-                // 切っていた。枠を 1 枚挟めば、比率はその枠の中の話になる。
+                // 棒は**上下のラベルを引いた残り**に収める。Column の子に付けた
+                // fillMaxHeight は残りではなく親の最大高を見るので、枠を 1 枚挟む。
                 Box(
                     modifier = Modifier.weight(1f).fillMaxWidth(),
                     contentAlignment = Alignment.BottomCenter,
@@ -499,10 +470,10 @@ internal fun eventMeta(event: CalendarEvent): String {
     return if (event.location.isBlank()) time else "$time · ${event.location}"
 }
 
-/** 度記号は数字より小さくする。同じ大きさだと記号が主張しすぎる。 */
+/** 度記号は数字より小さくする。 */
 private const val DEGREE_RATIO = 0.36f
 
-/** リングの溝の濃さ。濃色パネルの上なので、薄く敷く。 */
+/** リングの溝の濃さ。 */
 internal const val TRACK_ALPHA = 0.18f
 
 /** 棒グラフの最低の高さ。 */

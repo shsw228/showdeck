@@ -5,16 +5,10 @@ import com.shsw228.showdeck.DeckConfig
 import com.shsw228.showdeck.DeckMode
 
 /**
- * 配色。`Echo Dashboard.dc.html` の CSS 変数をそのまま写している。
- *
- * 名前も向こうに合わせてある。デザインを直したときに、どの変数が
- * どのフィールドかを探さなくて済むのが、意味の通った名前より効く。
- *
- * `--desk` だけは持っていない。あれはモックの「机の上」で、
- * 960×480 の画面の外側にあるもの。
+ * 配色。名前は `Echo Dashboard.dc.html` の CSS 変数に合わせてある
+ * （デザインを直したときにどの変数がどれかを探さなくて済む）。
  *
  * バックライトの raw 値はここではなく [DeckMode.backlightFor] が持つ。
- * 設定から変えられる値と固定の配色を混ぜると、真実の在処が二箇所になる。
  */
 data class DeckPalette(
     /** 主要な文字。 */
@@ -49,13 +43,7 @@ data class DeckPalette(
     val brightness: Float,
 ) {
     companion object {
-        /**
-         * 濃色パネルの上のアクセント。
-         *
-         * デザインでは昼夜とも `#5FC9BF` 固定。濃色パネル自体が昼夜で
-         * 変わらない（`readoutBg` はどちらも暗い）ので、その上に載る色も
-         * 変える理由がない。テーマから外して定数にしてある。
-         */
+        /** 濃色パネルの上のアクセント。パネル自体が昼夜で変わらないので固定。 */
         val ReadoutAccent = Color(0xFF5FC9BF)
 
         /** 濃色パネルの上のボタン文字。`ReadoutAccent` を地にしたときに読める濃さ。 */
@@ -65,16 +53,11 @@ data class DeckPalette(
         val EventBlue = Color(0xFF2F6DA4)
 
         /**
-         * 通常時。**地は黒。**
+         * 通常時。**地は完全な黒。**
          *
-         * デザインには明るい昼の配色もあったが、常時点灯で寝室にも置く端末で
-         * 白い面を光らせ続ける理由がない。黒地なら暗い部屋で眩しくならず、
-         * バックライトを下げたときも文字だけが残る。
-         *
-         * 地を完全な黒（#000000）にしているのは、タイルの `paper` を
-         * わずかに持ち上げるだけで面の区別が付くため。地が灰色だと、
-         * タイルとの差を出すのに `paper` を明るくすることになり、
-         * 画面全体の発光量が上がる。
+         * 常時点灯で寝室にも置くので、白い面を光らせ続けない。地が黒なら
+         * `paper` をわずかに持ち上げるだけで面の区別が付き、画面全体の
+         * 発光量を上げずに済む。
          */
         val Day = DeckPalette(
             ink = Color(0xFFE9F1F3),
@@ -96,10 +79,7 @@ data class DeckPalette(
 
         /**
          * 夜間。同じ黒地のまま、載っているものを一段落とす。
-         *
-         * バックライト自体も下げる（[DeckConfig.NIGHT_BACKLIGHT_RAW]）ので、
-         * ここで色をさらに沈めるのは二重の減光になる。それでも下げるのは、
-         * 暗順応した目には raw 1 でも白文字が刺さるため。
+         * バックライトも下げるが、暗順応した目には raw 1 でも白文字が刺さる。
          */
         val Night = DeckPalette(
             ink = Color(0xFFA9C4CE),
@@ -121,12 +101,7 @@ data class DeckPalette(
     }
 }
 
-/**
- * 予定の色。デザインの `TONES` と同じ 5 色。
- *
- * 予定そのものは色を持たないので、ICS の UID から決める。同じ予定が
- * 毎日違う色になると、色で見分けるという用途が成り立たない。
- */
+/** 予定の色。5 色。割り当ては [com.shsw228.showdeck.calendar.CalendarEvent.tone]。 */
 enum class EventTone { TIDE, SAND, BLUE, GRASS, BUOY }
 
 fun EventTone.color(palette: DeckPalette): Color = when (this) {
@@ -137,10 +112,7 @@ fun EventTone.color(palette: DeckPalette): Color = when (this) {
     EventTone.BUOY -> palette.buoy
 }
 
-/**
- * 消灯中はバックライトが 0 なので何を描いても見えないが、
- * タッチで一時復帰したときに眩しくないよう夜間の配色を使う。
- */
+/** 消灯中も夜間の配色を使う。タッチで一時復帰したときに眩しくないため。 */
 fun paletteFor(mode: DeckMode): DeckPalette = when (mode) {
     DeckMode.DAY -> DeckPalette.Day
     DeckMode.NIGHT, DeckMode.BLACKOUT -> DeckPalette.Night

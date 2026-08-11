@@ -32,11 +32,8 @@ import com.shsw228.showdeck.ui.theme.RingSpec
 import java.time.LocalDateTime
 
 /**
- * 集中（ポモドーロ）。
- *
- * 左に主役のリングと操作、右に長さの選択と今日の実績。
- * 操作は左に集めてある。右のプリセットは「設定」であって、
- * 走っている最中に触るものではない。
+ * 集中（ポモドーロ）。左に主役のリングと操作、右に長さの選択と今日の実績。
+ * 右のプリセットは設定であって、走っている最中に触るものではない。
  */
 @Composable
 fun FocusScreen(
@@ -115,8 +112,7 @@ fun FocusScreen(
                     )
 
                     Gap(DeckMetrics.Space4)
-                    // 3 つを幅で分け合う。自然な幅で並べたら右端の「スキップ」が
-                    // 切れた。主操作を少し広く取り、残りを二等分する。
+                    // 3 つを幅で分け合う。主操作を広く取り、残りを二等分。
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.spacedBy(DeckMetrics.Space2),
@@ -158,10 +154,8 @@ fun FocusScreen(
 }
 
 /**
- * 何回目かを示す点。
- *
- * 数字でも書いてあるが、点があると「あと 1 回で長い休憩」が一目で分かる。
- * 長い休憩までの回数を表すので、日の合計ではなく周期の中の位置を出す。
+ * 何回目かを示す点。「あと 1 回で長い休憩」が一目で分かる。
+ * 表すのは日の合計ではなく周期の中の位置。
  */
 @Composable
 private fun SessionDots(done: Int, goal: Int, palette: DeckPalette) {
@@ -238,12 +232,7 @@ private fun PresetPanel(
     }
 }
 
-/**
- * 長さのプリセット。
- *
- * 一般的なポモドーロアプリが持つ 3 種類。任意の分数を入れさせる UI は
- * 5.5 インチには載らないので、細かく変えたいときは Web 設定画面から。
- */
+/** 長さのプリセット 3 種。細かく変えるなら設定画面から。 */
 private data class Preset(val name: String, val work: Int, val rest: Int)
 
 private val PRESETS = listOf(

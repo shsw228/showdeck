@@ -66,11 +66,10 @@ fun TimersScreen(
 }
 
 /**
- * カードを横に並べる。**3 枚を超えたら横スクロール。**
+ * カードを横に並べる。**[Countdowns.VISIBLE] 枚を超えたら横スクロール。**
  *
- * カード幅は「見える幅に [Countdowns.VISIBLE] 枚がちょうど収まる幅」。
- * 固定 dp を置くと、ナビの出し方で見える幅が変わったときに 2.5 枚に
- * なったり隙間が余ったりする。枚数から幅を出せば、どの構成でも割り切れる。
+ * カード幅は見える幅を枚数で割って出す。固定 dp だと、ナビの出し方で
+ * 見える幅が変わったときに 2.5 枚になる。
  */
 @Composable
 private fun TimerCards(
@@ -134,8 +133,7 @@ private fun TimerCard(
             )
             Label(
                 text = state,
-                // 鳴り終わったものは警告色にする。止めただけのものと
-                // 同じ見た目だと、何が終わったのか分からない。
+                // 鳴り終わったものは警告色。止めただけのものと区別する。
                 color = when {
                     done -> palette.buoy
                     timer.isRunning -> palette.tideInk
@@ -185,12 +183,7 @@ private fun TimerCard(
     }
 }
 
-/**
- * クイック追加。
- *
- * 台所で使うので、押した瞬間に走り出す。分数を選んでから「開始」を
- * 押させると、手が濡れている場面で 2 タップになる。
- */
+/** クイック追加。押した瞬間に走り出す（台所で 2 タップさせない）。 */
 @Composable
 private fun QuickAdd(count: Int, palette: DeckPalette, actions: DeckActions) {
     val full = count >= Countdowns.MAX
@@ -208,7 +201,7 @@ private fun QuickAdd(count: Int, palette: DeckPalette, actions: DeckActions) {
                 ) {
                     ButtonLabel(
                         text = "$minutes min",
-                        // 上限に達したら押しても増えないので、薄くして伝える。
+                        // 上限に達したら押しても増えない。薄くして伝える。
                         color = if (full) palette.ink3 else palette.ink,
                         style = DeckType.Body,
                     )
@@ -218,9 +211,7 @@ private fun QuickAdd(count: Int, palette: DeckPalette, actions: DeckActions) {
 
             Box(Modifier.weight(1f))
 
-            // 画面に収まる枚数を超えたら、隠れている本数を出す。
-            // 横スクロールできることに気づけないと、あるはずのタイマーが
-            // 消えたように見える。
+            // 隠れている本数を出す。気づけないとタイマーが消えたように見える。
             if (count > Countdowns.VISIBLE) {
                 BasicText(
                     text = "+${count - Countdowns.VISIBLE} more →",
@@ -236,9 +227,5 @@ private fun QuickAdd(count: Int, palette: DeckPalette, actions: DeckActions) {
     }
 }
 
-/**
- * クイック追加の分数。
- *
- * 茶（3）・卵（5）・麺（10）・煮込み（20）。この 4 つで台所の大半が済む。
- */
+/** クイック追加の分数。茶・卵・麺・煮込み。 */
 private val QUICK_MINUTES = listOf(3, 5, 10, 20)

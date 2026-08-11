@@ -59,11 +59,7 @@ object IcsParser {
     }
 
     /**
-     * 折り返しをほどく。
-     *
-     * ICS は 75 オクテットで行を折り、続きの行を空白かタブで始める。
-     * ほどかずに読むと、長い件名が途中で切れたうえ、続きの行が
-     * 不明なプロパティとして捨てられる。
+     * 折り返しをほどく。ICS は 75 オクテットで行を折り、続きを空白かタブで始める。
      */
     private fun unfold(text: String): List<String> {
         val out = mutableListOf<String>()
@@ -78,10 +74,8 @@ object IcsParser {
     }
 
     /**
-     * `NAME;PARAM=VAL:VALUE` を名前部と値に割る。
-     *
-     * 最初のコロンで割るが、パラメータの値が引用符で囲まれている場合は
-     * その中のコロンを無視する（`TZID="GMT+09:00"` のような書き方がある）。
+     * `NAME;PARAM=VAL:VALUE` を名前部と値に割る。引用符の中のコロンは無視する
+     * （`TZID="GMT+09:00"` という書き方がある）。
      */
     private fun splitProperty(line: String): Pair<String, String>? {
         var quoted = false
@@ -115,8 +109,7 @@ object IcsParser {
 
         val end = find("DTEND")?.let { parseMoment(it.second, params(it.first), zone) }
             ?: find("DURATION")?.let { start.plus(parseDuration(it.second)) }
-            // DTEND も DURATION も無いとき、RFC は終日なら 1 日、時刻付きなら
-            // 0 分と定める。0 分の予定は timeline で幅を持たないので描画側で下限を敷く。
+            // RFC は終日なら 1 日、時刻付きなら 0 分と定める。0 分の幅は描画側で敷く。
             ?: if (allDay) start.plusDays(1) else start
 
         val uid = find("UID")?.second?.trim().orEmpty().ifEmpty { "$start/${find("SUMMARY")?.second}" }
@@ -137,8 +130,7 @@ object IcsParser {
             .filter { !it.toLocalDate().isBefore(from) && !it.toLocalDate().isAfter(to) }
             .map { at ->
                 CalendarEvent(
-                    // 繰り返しの各回は同じ UID を持つので、開始時刻を足して区別する。
-                    // 同じ鍵のまま並べると、選択状態が別の回に移る。
+                    // 繰り返しの各回は同じ UID なので開始時刻を足して区別する。
                     uid = if (starts.size > 1) "$uid@$at" else uid,
                     title = title,
                     location = location,
@@ -150,10 +142,8 @@ object IcsParser {
     }
 
     /**
-     * 日時 1 つを読む。
-     *
-     * 形式が 3 つあり、どれかで読めるまで順に試す。末尾 `Z` の UTC を
-     * ローカルとして読むと 9 時間ずれるので、判定を落とさないこと。
+     * 日時 1 つを読む。末尾 `Z` の UTC をローカルとして読むと 9 時間ずれるので、
+     * 判定を落とさないこと。
      */
     private fun parseMoment(
         raw: String,
@@ -191,10 +181,8 @@ object IcsParser {
     }
 
     /**
-     * RRULE を [from]..[to] のぶんだけ展開する。
-     *
-     * 無限に繰り返す規則があるので、必ず期間で切る。COUNT や UNTIL を
-     * 信用して全部作ると、10 年前から続く毎日の予定で数千件になる。
+     * RRULE を [from]..[to] のぶんだけ展開する。無限に繰り返す規則があるので
+     * 必ず期間で切る（10 年前から続く毎日の予定は数千件になる）。
      */
     private fun repeats(
         start: LocalDateTime,
@@ -229,10 +217,9 @@ object IcsParser {
             }
 
             "WEEKLY" -> {
-                // BYDAY が無ければ開始日の曜日に繰り返す、が RFC の既定。
+                // BYDAY が無ければ開始日の曜日（RFC の既定）。
                 val days = byDay.ifEmpty { setOf(start.dayOfWeek) }
-                // 週の起点は開始日の週。INTERVAL は週単位で数えるので、
-                // 日ごとに回して「開始週から何週目か」で間引く。
+                // INTERVAL は週単位。日ごとに回して「開始週から何週目か」で間引く。
                 val firstWeek = start.toLocalDate().with(DayOfWeek.MONDAY)
                 var day = start.toLocalDate()
                 var emitted = 0
@@ -247,16 +234,14 @@ object IcsParser {
                 }
             }
 
-            // 月次・年次は展開しない（この object の説明を参照）。
-            // 初回だけは出す。出さないと予定そのものが消える。
+            // 月次・年次は展開しない。初回だけ出す（出さないと予定が消える）。
             else -> out += start
         }
         return out
     }
 
     private fun weekday(token: String): DayOfWeek? =
-        // `2MO`（第 2 月曜）のような序数付きは曜日だけ取る。序数は月次でしか
-        // 意味を持たず、その月次に対応していない。
+        // `2MO` のような序数付きは曜日だけ取る（序数は月次専用で未対応）。
         when (token.takeLast(2).uppercase()) {
             "MO" -> DayOfWeek.MONDAY
             "TU" -> DayOfWeek.TUESDAY

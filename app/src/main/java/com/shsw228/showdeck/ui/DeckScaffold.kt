@@ -40,10 +40,7 @@ import java.time.format.DateTimeFormatter
 import java.util.Locale
 
 /**
- * 行き先。
- *
- * ナビの並び順はここの宣言順がそのまま出る。順番に意味があるので
- * （よく見るものほど左／上）、画面側で並べ替えない。
+ * 行き先。ナビの並び順は宣言順がそのまま出る（よく見るものほど左／上）。
  */
 enum class DeckDestination(val title: String, val icon: ImageVector) {
     HOME("Dashboard", DeckIcons.Home),
@@ -54,11 +51,7 @@ enum class DeckDestination(val title: String, val icon: ImageVector) {
 }
 
 /**
- * ナビの出し方。
- *
- * 常時表示の据え置き機なので、ナビが占める面積がそのまま情報量を削る。
- * どれが良いかは実際に部屋に置いて数日使わないと分からないので、
- * 設定で切り替えられるようにしてある。
+ * ナビの出し方。占める面積がそのまま情報量を削るので、設定で切り替えられる。
  */
 enum class NavStyle {
     /** 左に縦の丸ボタン。面積は食うが、どこにいても 1 タップで移動できる。 */
@@ -72,10 +65,8 @@ enum class NavStyle {
 }
 
 /**
- * 画面の外枠。ナビ、ヘッダ、本体の 3 つを置く。
- *
- * 本体（[content]）には**残り全部**を渡す。画面ごとに高さを計算させると、
- * ナビの出し方を変えたときに全画面を直すことになる。
+ * 画面の外枠。ナビ、ヘッダ、本体の 3 つ。
+ * 本体（[content]）には残り全部を渡す（画面ごとに高さを計算させない）。
  */
 @Composable
 fun DeckScaffold(
@@ -136,9 +127,7 @@ fun DeckScaffold(
 
 /**
  * ヘッダ。左に画面名、右に時計。
- *
- * 時計を右上の隅に置くのは、視線が最初に落ちる場所を本体に譲るため。
- * 常時見えていればよく、探して見るものではない。
+ * 時計を隅に置くのは、視線が最初に落ちる場所を本体に譲るため。
  */
 @Composable
 private fun DeckHeader(
@@ -152,9 +141,7 @@ private fun DeckHeader(
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            // 高さは**下限だけ**与える。固定すると、時計と日付行の 2 段が
-            // 収まらなかったときに下端で切れる（実際に切れた）。数値を
-            // 当て直すのではなく、要る高さは中身から決めさせる。
+            // 高さは**下限だけ**。固定すると 2 段が収まらないときに下端で切れる。
             .heightIn(min = DeckMetrics.HeaderHeight)
             .padding(
                 horizontal = DeckMetrics.HeaderPadding,
@@ -220,14 +207,9 @@ private fun HeaderClock(
     }
 
     Column(horizontalAlignment = Alignment.End) {
-        // 下端を揃える。
-        //
-        // `alignByBaseline()` を使ってはいけない。[RollingClock] の中身は
-        // `AnimatedContent` で、遷移中は新旧の桁が同居して公開する
-        // ベースラインが変わる。桁が転がる 180ms のあいだだけ秒が跳ねた。
-        //
-        // 代わりに時計の行高を 1.0 にしてある（[DeckType.Clock]）。行箱の
-        // 下端が字の足元とほぼ一致するので、箱の下端を揃えれば足元も揃う。
+        // 下端で揃える。`alignByBaseline()` は使えない（[RollingClock] の中の
+        // `AnimatedContent` が遷移中に公開するベースラインが変わり、秒が跳ねる）。
+        // 代わりに [DeckType.Clock] の行高を 1.0 にして下端＝足元にしている。
         Row(verticalAlignment = Alignment.Bottom) {
             RollingClock(
                 text = timeText,

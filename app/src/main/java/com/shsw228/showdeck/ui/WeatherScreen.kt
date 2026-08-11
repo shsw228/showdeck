@@ -34,10 +34,7 @@ import java.time.format.DateTimeFormatter
 import java.util.Locale
 
 /**
- * 天気。
- *
- * 左に「いま」、右に「これから」。いまの値は濃色パネルに 1 つだけ大きく置き、
- * これからは推移（棒）と日ごと（行）に分ける。
+ * 天気。左に「いま」、右に「これから」（推移の棒と日ごとの行）。
  */
 @Composable
 fun WeatherScreen(
@@ -69,8 +66,7 @@ fun WeatherScreen(
             modifier = Modifier.weight(1f).fillMaxHeight(),
             verticalArrangement = Arrangement.spacedBy(DeckMetrics.TileGap),
         ) {
-            // 予報は 5 行が必ず入る高さが要る。等分にすると 5 日目が切れた。
-            // 棒グラフは潰れても形が読めるので、余りはそちらから取る。
+            // 予報は 5 行が必ず入る高さが要る。棒グラフは潰れても形が読める。
             TrendTile(weather, palette, Modifier.fillMaxWidth().weight(1f))
             ForecastTile(weather.daily, today, palette, Modifier.fillMaxWidth().weight(1.5f))
         }
@@ -108,7 +104,7 @@ private fun CurrentPanel(
         DashedRule(palette.readoutMut)
         Gap(DeckMetrics.Space3)
 
-        // 副次的な値は行で並べる。数字を大きくすると主役の気温と競う。
+        // 副次的な値は行で並べる。大きくすると主役の気温と競う。
         Detail("High", "${weather.highC ?: "--"}°", palette)
         Detail("Low", "${weather.lowC ?: "--"}°", palette)
         Detail("Rain", "${weather.popPercent ?: 0}%", palette)
@@ -141,8 +137,7 @@ private fun TrendTile(
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Label("Ahead", palette.tide)
-            // 何時間ぶんかは中身から出す。「36 時間」と書いておいて
-            // 区間が足りない日があると嘘になる。
+            // 何時間ぶんかは中身から出す。決め打ちだと区間が足りない日に嘘になる。
             BasicText(
                 text = "next ${weather.hourly.size * HOURS_PER_SLOT} h",
                 style = DeckType.Meta.copy(color = palette.ink3),
@@ -165,8 +160,7 @@ private fun ForecastTile(
     palette: DeckPalette,
     modifier: Modifier,
 ) {
-    // 気温レンジの棒は、全日を通した幅で正規化する。日ごとに正規化すると
-    // どの日も同じ長さになり、暖かい日と寒い日の差が消える。
+    // 全日を通した幅で正規化する。日ごとだとどの日も同じ長さになる。
     val lows = daily.mapNotNull { it.lowC }
     val highs = daily.mapNotNull { it.highC }
     val floor = lows.minOrNull() ?: 0
@@ -215,12 +209,7 @@ private fun ForecastTile(
     }
 }
 
-/**
- * 気温レンジの棒。
- *
- * 最低から最高までを、全日通しの幅の中のどこに位置するかで描く。
- * 数字だけだと 5 行を見比べる必要があるが、棒なら並びで分かる。
- */
+/** 気温レンジの棒。数字を 5 行見比べなくても並びで分かる。 */
 @Composable
 private fun RangeBar(day: DailyForecast, floor: Int, span: Float, palette: DeckPalette) {
     val low = day.lowC ?: floor
@@ -250,7 +239,7 @@ private fun RangeBar(day: DailyForecast, floor: Int, span: Float, palette: DeckP
 /** 1 区間の時間。OpenWeatherMap の無料枠は 3 時間刻み。 */
 private const val HOURS_PER_SLOT = 3
 
-/** レンジ棒の最小幅。最高と最低が同じ日でも棒を消さない。 */
+/** レンジ棒の最小幅。最高と最低が同じ日でも消さない。 */
 private const val MIN_RANGE = 0.08f
 
 private val DAY_COLUMN = androidx.compose.ui.unit.Dp(44f)
