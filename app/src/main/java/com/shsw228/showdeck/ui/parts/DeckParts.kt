@@ -1,38 +1,37 @@
 package com.shsw228.showdeck.ui.parts
 
-import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
-import androidx.compose.foundation.Image
-import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.text.BasicText
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.Icon
+import androidx.compose.material3.LinearProgressIndicator
+import androidx.compose.material3.ProgressIndicatorDefaults
+import androidx.compose.material3.Text
 import androidx.compose.material3.ripple
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.StrokeCap
-import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.layout
 import androidx.compose.ui.text.TextStyle
@@ -46,7 +45,9 @@ import com.shsw228.showdeck.ui.theme.RingSpec
 /**
  * タイル。明るい面。
  *
- * 押せるものと押せないものがあるので [onClick] は省略できる。
+ * 中身は material3 の [Card]。面・角丸・押下時の state layer は標準に任せる。
+ * 影は出さない（`elevation = 0`）。黒地に影を落としても見えないうえ、
+ * この画面は面の明るさだけで階層を作っている。
  */
 @Composable
 fun Tile(
@@ -78,23 +79,31 @@ private fun Panel(
     padding: PaddingValues,
     content: @Composable ColumnScope.() -> Unit,
 ) {
-    Column(
-        // clip を先に置く。ripple がこの角丸で切られる。
-        modifier = modifier
-            .clip(DeckMetrics.TileShape)
-            .background(color)
-            .tappable(onClick)
-            .padding(padding),
-        content = content,
-    )
+    val colors = CardDefaults.cardColors(containerColor = color)
+    val elevation = CardDefaults.cardElevation(defaultElevation = Dp.Hairline)
+
+    if (onClick == null) {
+        Card(modifier = modifier, shape = DeckMetrics.TileShape, colors = colors, elevation = elevation) {
+            Column(Modifier.padding(padding), content = content)
+        }
+    } else {
+        Card(
+            onClick = onClick,
+            modifier = modifier,
+            shape = DeckMetrics.TileShape,
+            colors = colors,
+            elevation = elevation,
+        ) {
+            Column(Modifier.padding(padding), content = content)
+        }
+    }
 }
 
 /**
- * 押せることが分かるタップ。
+ * 面ではないものを押せるようにする。
  *
- * 押下の表現はプラットフォームに任せる。端末のアニメーション設定や
- * モーション低減の設定を尊重するのはこちらの仕事ではない。
- * ripple の色はテーマの `onSurface` から決まるので指定も要らない。
+ * 面なら [Tile] / [Readout]（= [Card]）が state layer ごと面倒を見るので、
+ * ここを使うのは行や週ストリップのように「面を持たないが押せる」ものだけ。
  */
 @Composable
 fun Modifier.tappable(onClick: (() -> Unit)?): Modifier {
@@ -102,17 +111,17 @@ fun Modifier.tappable(onClick: (() -> Unit)?): Modifier {
     return clickable(interactionSource = null, indication = ripple(), onClick = onClick)
 }
 
-/** アイコン。図形だけ借りて描画は [Image] に任せる。 */
+/** アイコン。 */
 @Composable
 fun DeckIcon(
     image: ImageVector,
     color: Color,
     size: Dp,
     modifier: Modifier = Modifier,
-) = Image(
+) = Icon(
     imageVector = image,
     contentDescription = null,
-    colorFilter = ColorFilter.tint(color),
+    tint = color,
     modifier = modifier.size(size),
 )
 
@@ -125,15 +134,21 @@ fun Label(
     text: String,
     color: Color,
     modifier: Modifier = Modifier,
-) = BasicText(
+) = Text(
     text = text.uppercase(),
-    style = DeckType.Label.copy(color = color),
+    style = DeckType.Label,
+    color = color,
     maxLines = 1,
     overflow = TextOverflow.Ellipsis,
     modifier = modifier,
 )
 
-/** 破線の区切り。実線だと主張しすぎるので点線。 */
+/**
+ * 破線の区切り。
+ *
+ * ここだけは標準に相当するものが無い（`HorizontalDivider` は実線）。
+ * 実線だと罫線が主張してタイルの中が窮屈になるので点線を保つ。
+ */
 @Composable
 fun DashedRule(
     color: Color,
@@ -156,7 +171,9 @@ fun DashedRule(
 
 /**
  * 進捗リング。[fraction] は**残り**の割合（0 で空、1 で満）。
- * 大きさ・線の太さ・中央の文字は [RingSpec] が組で持つ。
+ *
+ * 中身は material3 の [CircularProgressIndicator]。大きさ・線の太さ・
+ * 中央の文字は [RingSpec] が組で持つ。
  */
 @Composable
 fun ProgressRing(
@@ -168,30 +185,16 @@ fun ProgressRing(
     content: @Composable BoxScope.() -> Unit = {},
 ) {
     Box(modifier = modifier.size(spec.size), contentAlignment = Alignment.Center) {
-        Canvas(Modifier.fillMaxSize()) {
-            val width = spec.stroke.toPx()
-            val topLeft = Offset(width / 2, width / 2)
-            val arc = Size(size.width - width, size.height - width)
-            drawArc(
-                color = trackColor,
-                startAngle = 0f,
-                sweepAngle = 360f,
-                useCenter = false,
-                topLeft = topLeft,
-                size = arc,
-                style = Stroke(width = width),
-            )
-            drawArc(
-                color = color,
-                // 12 時から時計回り。0 度は 3 時の位置なので 90 度戻す。
-                startAngle = -90f,
-                sweepAngle = 360f * fraction.coerceIn(0f, 1f),
-                useCenter = false,
-                topLeft = topLeft,
-                size = arc,
-                style = Stroke(width = width, cap = StrokeCap.Round),
-            )
-        }
+        CircularProgressIndicator(
+            progress = { fraction.coerceIn(0f, 1f) },
+            modifier = Modifier.fillMaxSize(),
+            color = color,
+            trackColor = trackColor,
+            strokeWidth = spec.stroke,
+            strokeCap = StrokeCap.Round,
+            // 溝と進捗のあいだに隙間を入れない。閉じた輪に見せたい。
+            gapSize = Dp.Hairline,
+        )
         content()
     }
 }
@@ -206,25 +209,23 @@ fun ProgressBar(
     trackColor: Color,
     color: Color,
     modifier: Modifier = Modifier,
-) {
-    Box(
-        modifier = modifier
-            .fillMaxWidth()
-            .height(DeckMetrics.BarHeight)
-            .clip(DeckMetrics.Pill)
-            .background(trackColor),
-    ) {
-        Box(
-            Modifier
-                .fillMaxHeight()
-                .fillMaxWidth(fraction.coerceIn(0f, 1f))
-                .clip(DeckMetrics.Pill)
-                .background(color),
-        )
-    }
-}
+) = LinearProgressIndicator(
+    progress = { fraction.coerceIn(0f, 1f) },
+    modifier = modifier.fillMaxWidth().height(DeckMetrics.BarHeight),
+    color = color,
+    trackColor = trackColor,
+    strokeCap = ProgressIndicatorDefaults.LinearStrokeCap,
+    gapSize = Dp.Hairline,
+    // 終端の点は出さない。読み込み中を示す印で、経過を示すこの用途では
+    // 4dp の棒に置くと汚れに見える。
+    drawStopIndicator = {},
+)
 
-/** 錠剤ボタン。押せるものは全部この形。中身は呼び出し側が置く。 */
+/**
+ * 錠剤ボタン。押せるものは全部この形。
+ *
+ * 中身は material3 の [Button]。形だけ丸くしてある。
+ */
 @Composable
 fun PillButton(
     onClick: () -> Unit,
@@ -233,25 +234,22 @@ fun PillButton(
     height: Dp = DeckMetrics.ButtonHeight,
     paddingH: Dp = DeckMetrics.ButtonPaddingH,
     content: @Composable RowScope.() -> Unit,
-) {
-    Row(
-        modifier = modifier
-            .height(height)
-            .clip(DeckMetrics.Pill)
-            .background(background)
-            .tappable(onClick)
-            .padding(horizontal = paddingH),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.Center,
-        content = content,
-    )
-}
+) = Button(
+    onClick = onClick,
+    modifier = modifier.height(height),
+    shape = CircleShape,
+    colors = ButtonDefaults.buttonColors(containerColor = background),
+    elevation = null,
+    contentPadding = PaddingValues(horizontal = paddingH),
+    content = content,
+)
 
 /** ボタンの中の文字。 */
 @Composable
-fun ButtonLabel(text: String, color: Color, style: TextStyle = DeckType.Button) = BasicText(
+fun ButtonLabel(text: String, color: Color, style: TextStyle = DeckType.Button) = Text(
     text = text,
-    style = style.copy(color = color),
+    style = style,
+    color = color,
     maxLines = 1,
 )
 
@@ -270,3 +268,10 @@ fun Modifier.offsetFraction(fraction: Float) = this.then(
 /** 縦横どちらでも使える隙間。Row なら幅、Column なら高さとして効く。 */
 @Composable
 fun Gap(size: Dp) = Spacer(Modifier.size(size))
+
+/** 隙間を空ける向きを持たない詰め物。`Arrangement` で足りない場所だけ。 */
+@Composable
+fun RowScope.Filler() = Spacer(Modifier.weight(1f))
+
+@Composable
+fun ColumnScope.Filler() = Spacer(Modifier.weight(1f))
