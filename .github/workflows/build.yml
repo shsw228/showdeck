@@ -42,9 +42,9 @@ jobs:
           distribution: temurin
           java-version: '17'
 
-      - name: Android SDK
-        uses: android-actions/setup-android@v4
-
+      # SDK は runner のイメージに入っているものを使う。setup-android は
+      # cmdline-tools を毎回入れ直したうえ emulator まで入れるので、
+      # 実機しか使わないこの CI には要らない（platform 37 は既に在る）。
       - name: Gradle
         uses: gradle/actions/setup-gradle@v6
 
