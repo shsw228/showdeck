@@ -7,7 +7,9 @@ import com.shsw228.showdeck.settings.SettingsStore
 import com.shsw228.showdeck.settings.minutesToTime
 import com.shsw228.showdeck.settings.timeToMinutes
 import com.shsw228.showdeck.system.Backlight
+import com.shsw228.showdeck.alert.AlertCenter
 import com.shsw228.showdeck.system.DeviceSetup
+import com.shsw228.showdeck.weather.TodayWeather
 import fi.iki.elonen.NanoHTTPD
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
@@ -33,11 +35,14 @@ class WebCtlServer(
         val ipAddress: String?,
         val capabilities: DeviceSetup.Capabilities?,
         val lux: Float?,
+        val weather: TodayWeather?,
     )
 
     override fun serve(session: IHTTPSession): Response = runCatching {
         when {
             session.method == Method.POST && session.uri == "/save" -> handleSave(session)
+            session.method == Method.POST && session.uri == "/timer" -> handleTimer(session)
+            session.method == Method.POST && session.uri == "/stop" -> handleStop()
             session.uri == "/logs" -> handleLogs()
             else -> handleIndex()
         }
@@ -72,14 +77,36 @@ class WebCtlServer(
             wakeSeconds = params.int("wakeSeconds", current.wakeSeconds).coerceIn(5, 300),
             wakeOnLight = params.containsKey("wakeOnLight"),
             wakeLuxThreshold = params.int("wakeLux", current.wakeLuxThreshold).coerceIn(1, 1000),
+            weatherAreaCode = params["weatherArea"]?.trim()?.takeIf { it.isNotBlank() }
+                ?: current.weatherAreaCode,
+            alarmEnabled = params.containsKey("alarmEnabled"),
+            alarmMinutes = params.timeMinutes("alarmTime", current.alarmMinutes),
         )
         runBlocking { settingsStore.update(updated) }
         Log.i(TAG, "設定を更新: $updated")
 
-        return newFixedLengthResponse(Response.Status.REDIRECT, MIME_HTML, "").apply {
+        return redirectHome()
+    }
+
+    /** キッチンで使うので、分を入れて押すだけの一番短い操作にする。 */
+    private fun handleTimer(session: IHTTPSession): Response {
+        session.parseBody(HashMap())
+        val minutes = session.parms.int("minutes", 5).coerceIn(1, 24 * 60)
+        val label = session.parms["label"]?.trim().orEmpty()
+        AlertCenter.startTimer(minutes, label)
+        Log.i(TAG, "タイマー開始: $minutes 分 $label")
+        return redirectHome()
+    }
+
+    private fun handleStop(): Response {
+        AlertCenter.dismiss()
+        return redirectHome()
+    }
+
+    private fun redirectHome(): Response =
+        newFixedLengthResponse(Response.Status.REDIRECT, MIME_HTML, "").apply {
             addHeader("Location", "/")
         }
-    }
 
     private fun handleLogs(): Response {
         // 端末をひっくり返さずに落ちた理由を見たい。adb を繋ぐより早い。
@@ -117,7 +144,28 @@ private fun timeValue(minutes: Int): String = minutesToTime(minutes).let {
 
 private fun checkMark(value: Boolean) = if (value) "✓" else "✗"
 
+private fun timeOfDay(at: java.time.LocalDateTime): String =
+    "%02d:%02d".format(at.hour, at.minute)
+
 private fun renderIndex(s: DeckSettings, status: WebCtlServer.Status): String {
+    val timerStatus = when {
+        AlertCenter.firing != null -> "🔔 ${AlertCenter.firing} が鳴っています"
+        AlertCenter.timerEndsAt != null ->
+            "${AlertCenter.timerLabel} — ${timeOfDay(AlertCenter.timerEndsAt!!)} に鳴ります"
+        else -> "動作中のタイマーはありません"
+    }
+
+    val weatherStatus = status.weather?.let {
+        buildString {
+            append(it.areaName)
+            append(" / ")
+            append(it.description.ifBlank { "—" })
+            it.highC?.let { high -> append(" / 最高 ${high}°") }
+            it.lowC?.let { low -> append(" 最低 ${low}°") }
+            it.popPercent?.let { pop -> append(" / 降水 ${pop}%") }
+        }
+    } ?: "まだ取得できていません（通信が復旧すると 30 分以内に入ります）"
+
     val caps = status.capabilities
     val capsRows = if (caps == null) {
         "<tr><td colspan=2>取得中</td></tr>"
@@ -166,6 +214,11 @@ private fun renderIndex(s: DeckSettings, status: WebCtlServer.Status): String {
   .ok { color: #6fbf73; } .ng { color: #b4564a; }
   a { color: #7aa7d8; }
   .hint { color: #6b7075; font-size: 12px; margin: 4px 0 0; }
+  .inline { display: inline-flex; gap: 8px; align-items: center; margin: 0 8px 0 0; }
+  input[type=text] { background: #16181b; color: #e8e4da; border: 1px solid #2c2f34;
+          border-radius: 6px; padding: 6px 8px; width: 150px; }
+  button.secondary { background: #3a3d42; }
+  fieldset .sub { margin: 0 0 10px; }
 </style>
 </head>
 <body><main>
@@ -174,7 +227,34 @@ private fun renderIndex(s: DeckSettings, status: WebCtlServer.Status): String {
    / バックライト ${Backlight.read() ?: "?"}/${Backlight.max}
    / 照度 ${status.lux?.let { "%.0f lux".format(it) } ?: "—"}</p>
 
+<fieldset>
+  <legend>タイマー</legend>
+  <p class="sub">$timerStatus</p>
+  <form method="post" action="/timer" class="inline">
+    <input type="number" name="minutes" min="1" max="1440" value="5" required>
+    <input type="text" name="label" placeholder="ラベル（省略可）">
+    <button type="submit">開始</button>
+  </form>
+  <form method="post" action="/stop" class="inline">
+    <button type="submit" class="secondary">止める</button>
+  </form>
+</fieldset>
+
 <form method="post" action="/save">
+  <fieldset>
+    <legend>天気</legend>
+    <p class="sub">$weatherStatus</p>
+    <label><span>気象庁の地域コード</span><input type="text" name="weatherArea" value="${s.weatherAreaCode}"></label>
+    <p class="hint">130000=東京都 / 270000=大阪府 / 200000=長野県 / 400000=福岡県 / 016000=石狩地方。
+       一覧は気象庁の area.json にある。</p>
+  </fieldset>
+
+  <fieldset>
+    <legend>アラーム（毎日）</legend>
+    <label><span>使う</span><input type="checkbox" name="alarmEnabled" ${if (s.alarmEnabled) "checked" else ""}></label>
+    <label><span>時刻</span><input type="time" name="alarmTime" value="${timeValue(s.alarmMinutes)}"></label>
+  </fieldset>
+
   <fieldset>
     <legend>夜間モード（減光して赤単色にする）</legend>
     <label><span>開始</span><input type="time" name="nightStart" value="${timeValue(s.nightStartMinutes)}"></label>

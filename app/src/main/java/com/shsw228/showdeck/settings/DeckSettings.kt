@@ -34,11 +34,19 @@ data class DeckSettings(
     val wakeOnLight: Boolean,
     /** 復帰と判定する照度（lux）。 */
     val wakeLuxThreshold: Int,
+
+    /** 気象庁の地域コード。 */
+    val weatherAreaCode: String,
+
+    /** 毎日のアラーム。 */
+    val alarmEnabled: Boolean,
+    val alarmMinutes: Int,
 ) {
     val nightStart: LocalTime get() = minutesToTime(nightStartMinutes)
     val nightEnd: LocalTime get() = minutesToTime(nightEndMinutes)
     val blackoutStart: LocalTime get() = minutesToTime(blackoutStartMinutes)
     val blackoutEnd: LocalTime get() = minutesToTime(blackoutEndMinutes)
+    val alarmTime: LocalTime get() = minutesToTime(alarmMinutes)
 
     companion object {
         val Defaults = DeckSettings(
@@ -52,6 +60,9 @@ data class DeckSettings(
             wakeSeconds = DeckConfig.WAKE_SECONDS,
             wakeOnLight = DeckConfig.WAKE_ON_LIGHT,
             wakeLuxThreshold = DeckConfig.WAKE_LUX_THRESHOLD,
+            weatherAreaCode = DeckConfig.WEATHER_AREA_CODE,
+            alarmEnabled = DeckConfig.ALARM_ENABLED,
+            alarmMinutes = timeToMinutes(DeckConfig.ALARM_TIME),
         )
     }
 }

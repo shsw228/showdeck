@@ -6,6 +6,7 @@ import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.intPreferencesKey
+import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
@@ -34,6 +35,9 @@ class SettingsStore(private val context: Context) {
             prefs[WAKE_SECONDS] = settings.wakeSeconds
             prefs[WAKE_ON_LIGHT] = settings.wakeOnLight
             prefs[WAKE_LUX] = settings.wakeLuxThreshold
+            prefs[WEATHER_AREA] = settings.weatherAreaCode
+            prefs[ALARM_ENABLED] = settings.alarmEnabled
+            prefs[ALARM_MINUTES] = settings.alarmMinutes
         }
     }
 
@@ -51,6 +55,10 @@ class SettingsStore(private val context: Context) {
             wakeSeconds = (this[WAKE_SECONDS] ?: d.wakeSeconds).coerceIn(5, 300),
             wakeOnLight = this[WAKE_ON_LIGHT] ?: d.wakeOnLight,
             wakeLuxThreshold = (this[WAKE_LUX] ?: d.wakeLuxThreshold).coerceIn(1, 1000),
+            // 空文字だと気象庁への URL が壊れるので、既定に落とす。
+            weatherAreaCode = this[WEATHER_AREA]?.takeIf { it.isNotBlank() } ?: d.weatherAreaCode,
+            alarmEnabled = this[ALARM_ENABLED] ?: d.alarmEnabled,
+            alarmMinutes = (this[ALARM_MINUTES] ?: d.alarmMinutes).coerceIn(0, 1439),
         )
     }
 
@@ -65,5 +73,8 @@ class SettingsStore(private val context: Context) {
         val WAKE_SECONDS = intPreferencesKey("wake_seconds")
         val WAKE_ON_LIGHT = booleanPreferencesKey("wake_on_light")
         val WAKE_LUX = intPreferencesKey("wake_lux")
+        val WEATHER_AREA = stringPreferencesKey("weather_area")
+        val ALARM_ENABLED = booleanPreferencesKey("alarm_enabled")
+        val ALARM_MINUTES = intPreferencesKey("alarm_minutes")
     }
 }

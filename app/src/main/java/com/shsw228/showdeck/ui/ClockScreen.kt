@@ -31,6 +31,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.shsw228.showdeck.DeckConfig
 import com.shsw228.showdeck.ui.theme.DeckPalette
+import com.shsw228.showdeck.weather.TodayWeather
 import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
 import java.util.Locale
@@ -47,6 +48,7 @@ private const val TABULAR_FIGURES = "tnum"
 fun ClockScreen(
     nowState: State<LocalDateTime>,
     palette: DeckPalette,
+    weather: TodayWeather?,
     ipAddress: String?,
     modifier: Modifier = Modifier,
 ) {
@@ -64,6 +66,8 @@ fun ClockScreen(
         val railSecondarySize = with(density) { (maxHeight * 0.085f).toSp() }
         val footnoteSize = with(density) { (maxHeight * 0.05f).toSp() }
         val gutter = maxHeight * 0.07f
+        // Row の中では BoxWithConstraints のレシーバが隠れるので、ここで確定させる。
+        val weatherIconSize = maxHeight * 0.17f
 
         val shift by remember {
             derivedStateOf { pixelShiftOffset(nowState.value) }
@@ -100,6 +104,9 @@ fun ClockScreen(
                     primarySize = railPrimarySize,
                     secondarySize = railSecondarySize,
                     footnoteSize = footnoteSize,
+                    iconSize = weatherIconSize,
+                    gutter = gutter,
+                    weather = weather,
                     ipAddress = ipAddress,
                     modifier = Modifier.weight(1f),
                 )
@@ -169,6 +176,9 @@ private fun InfoRail(
     primarySize: androidx.compose.ui.unit.TextUnit,
     secondarySize: androidx.compose.ui.unit.TextUnit,
     footnoteSize: androidx.compose.ui.unit.TextUnit,
+    iconSize: Dp,
+    gutter: Dp,
+    weather: TodayWeather?,
     ipAddress: String?,
     modifier: Modifier = Modifier,
 ) {
@@ -211,10 +221,21 @@ private fun InfoRail(
             ),
         )
 
+        if (weather != null) {
+            Spacer(Modifier.height(gutter * 0.5f))
+            WeatherBlock(
+                weather = weather,
+                palette = palette,
+                iconSize = iconSize,
+                textSize = secondarySize,
+                footnoteSize = footnoteSize,
+            )
+        }
+
         Spacer(Modifier.weight(1f))
 
-        // 天気・予定はここに積んでいく（ロードマップ 4 以降）。
-        // それまでは IP を出しておくと adb connect と実機確認が楽になる。
+        // 予定はこの下に積んでいく（ロードマップ 6）。
+        // IP を出しておくと adb connect と Web 設定画面を開くのが楽になる。
         if (ipAddress != null) {
             BasicText(
                 text = ipAddress,
@@ -224,6 +245,51 @@ private fun InfoRail(
                     fontFeatureSettings = TABULAR_FIGURES,
                 ),
             )
+        }
+    }
+}
+
+/**
+ * 天気は「アイコン・最高最低・降水確率」の 3 つだけ。
+ *
+ * 5.5 インチを 3m から見て読めるのは 3〜4 項目までなので、風速や週間予報は載せない。
+ * 気象庁の文言（「雨　夕方　まで　時々　くもり」）もここには出さず、
+ * Web 設定画面でだけ見せる。
+ */
+@Composable
+private fun WeatherBlock(
+    weather: TodayWeather,
+    palette: DeckPalette,
+    iconSize: Dp,
+    textSize: androidx.compose.ui.unit.TextUnit,
+    footnoteSize: androidx.compose.ui.unit.TextUnit,
+) {
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        WeatherIcon(kind = weather.icon, color = palette.primary, size = iconSize)
+        Spacer(Modifier.width(iconSize * 0.28f))
+        Column {
+            val high = weather.highC?.let { "$it°" }
+            val low = weather.lowC?.let { "$it°" }
+            if (high != null || low != null) {
+                BasicText(
+                    text = listOfNotNull(high, low).joinToString(" / "),
+                    style = TextStyle(
+                        color = palette.primary,
+                        fontSize = textSize,
+                        fontFeatureSettings = TABULAR_FIGURES,
+                    ),
+                )
+            }
+            weather.popPercent?.let {
+                BasicText(
+                    text = "降水 $it%",
+                    style = TextStyle(
+                        color = palette.secondary,
+                        fontSize = footnoteSize,
+                        fontFeatureSettings = TABULAR_FIGURES,
+                    ),
+                )
+            }
         }
     }
 }

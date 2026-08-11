@@ -53,6 +53,19 @@ object DeckConfig {
     /** 微小オフセットの振れ幅（dp）。視認できない程度に留める。 */
     const val PIXEL_SHIFT_RANGE_DP = 6
 
+    /**
+     * 気象庁の地域コード。130000=東京都 / 270000=大阪府 / 200000=長野県 /
+     * 016000=石狩地方 / 400000=福岡県。Web 設定画面から変更できる。
+     */
+    const val WEATHER_AREA_CODE = "130000"
+
+    /** 天気の取得間隔。気象庁の更新は 1 日数回なのでこれで十分。 */
+    const val WEATHER_REFRESH_MINUTES = 30
+
+    /** 毎日のアラーム。既定は無効。 */
+    const val ALARM_ENABLED = false
+    val ALARM_TIME: LocalTime = LocalTime.of(7, 0)
+
     /** 端末内 Web 設定画面のポート。 */
     const val WEB_PORT = 8080
 }

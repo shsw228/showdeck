@@ -11,7 +11,8 @@ Android 化した Echo Show 5 第2世代（`cronos`）向けの常駐ダッシ�
 - **常時表示**。毎秒の再コンポーズを避ける。時刻は `State` のまま末端へ渡し、`derivedStateOf` で実際に変わったときだけ再コンポーズさせる
 - **輝度は sysfs を直接持っている**。ウィンドウ輝度も `Settings.System.SCREEN_BRIGHTNESS` も実機では十分に暗くならなかった（README の実測表を参照）。DisplayPowerController が書き戻すので、定期的に押し戻す前提で組む
 - **ABI は armeabi-v7a のみ**。ROM が 32bit なので arm64 のネイティブライブラリを入れない
-- **暗い部屋で使う**。新しい画面を足すときは夜間パレットでの見え方を必ず確認する
+- **暗い部屋で使う**。新しい画面を足すときは夜間パレットでの見え方を必ず確認する。例外は発報画面で、そこだけは常に明るい色を使う（夜中のアラームが読めないと用をなさない）
+- **アイコンは画像を持たず Canvas で描く**。ビットマップは夜間の赤単色に追従できない。線画だと重なった弧が見えて潰れるので塗りにする
 - **ストア配布しない**。`targetSdk = 28` は意図的。上げると Android 10 以降の制約が復活するので、上げる理由がない限り触らない
 
 ## プラットフォーム署名が前提
@@ -33,6 +34,13 @@ Android 化した Echo Show 5 第2世代（`cronos`）向けの常駐ダッシ�
 - **Device Owner が付いているとアンインストールできない。** `dpm remove-active-admin` は失敗する。`adb root` で `/data/system/device_owner_2.xml` と `device_policies.xml` を消して再起動するのが唯一の手順
 - **`am force-stop` は効かない。** system UID で動いているため無視される。再起動させるには `adb root` してから `kill -9 $(adb shell pidof com.shsw228.showdeck)`。ランチャーなので system_server が即座に起動し直す
 - **コード編集に `python3` の `str.replace` を使わない。** 一致しなくても無言で成功するため、修正したつもりで実機を測り続ける事故が起きた。当たらなければエラーになる手段を使う
+
+## 外部データの扱い
+
+- **通信が死んでも時計は必ず出す。** 天気などの取得に失敗したらキャッシュを読み、それも無ければその欄ごと畳む。起動を止めない
+- 気象庁 JSON は当日と週間で構造が違う。**添字の決め打ちをしない**（発表時刻で対応がずれる）。日付で突き合わせる
+- 解析は副作用のない関数に切り出し、実際の応答を `app/src/test/resources/` に置いてテストする
+- **Android の `org.json` はユニットテストではスタブ**で、呼ぶと例外になる。`testImplementation(libs.json)` で実装を載せてある
 
 ## Build, Test, and Development Commands
 

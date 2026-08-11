@@ -118,4 +118,8 @@ dependencies {
     // 必要な描画は foundation だけで組む。
 
     testImplementation(libs.junit)
+
+    // Android の org.json はユニットテストではスタブで、呼ぶと例外になる。
+    // 実装をテストの classpath に載せて、気象庁 JSON の解析を実機なしで確かめる。
+    testImplementation(libs.json)
 }

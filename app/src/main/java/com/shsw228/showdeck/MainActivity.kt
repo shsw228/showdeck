@@ -22,6 +22,8 @@ import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.shsw228.showdeck.admin.DeviceAdmin
+import com.shsw228.showdeck.alert.AlertCenter
+import com.shsw228.showdeck.alert.AlertPlayer
 import com.shsw228.showdeck.settings.DeckSettings
 import com.shsw228.showdeck.settings.SettingsStore
 import com.shsw228.showdeck.system.Backlight
@@ -29,9 +31,12 @@ import com.shsw228.showdeck.system.DeviceSetup
 import com.shsw228.showdeck.system.lightSensorFlow
 import com.shsw228.showdeck.system.localIpAddress
 import com.shsw228.showdeck.system.rememberNowState
+import com.shsw228.showdeck.ui.AlertOverlay
 import com.shsw228.showdeck.ui.ClockScreen
 import com.shsw228.showdeck.ui.DiagnosticsOverlay
 import com.shsw228.showdeck.ui.theme.paletteFor
+import com.shsw228.showdeck.weather.TodayWeather
+import com.shsw228.showdeck.weather.WeatherRepository
 import com.shsw228.showdeck.web.WebCtlServer
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
@@ -40,6 +45,9 @@ import java.time.LocalDateTime
 
 /** DisplayPowerController に書き戻された輝度を押し戻す間隔。読み取りだけなら安い。 */
 private const val BACKLIGHT_ENFORCE_INTERVAL_MS = 15_000L
+
+/** 発報したときに画面を戻しておく時間。鳴っているのに真っ暗では意味がない。 */
+private const val ALERT_WAKE_MINUTES = 5L
 
 private const val TAG = "ShowDeck"
 
@@ -53,16 +61,21 @@ private const val TAG = "ShowDeck"
 class MainActivity : ComponentActivity() {
 
     private lateinit var settingsStore: SettingsStore
+    private lateinit var weatherRepository: WeatherRepository
+    private lateinit var alertPlayer: AlertPlayer
     private var webServer: WebCtlServer? = null
 
     /** Web 設定画面に現状を見せるための、UI 側から書き込む参照。 */
     @Volatile
-    private var status = WebCtlServer.Status("起動中", null, null, null)
+    private var status = WebCtlServer.Status("起動中", null, null, null, null)
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
         settingsStore = SettingsStore(applicationContext)
+        weatherRepository = WeatherRepository(applicationContext)
+        // TTS の初期化は数百 ms かかる。発報の瞬間に作ると最初の一言が欠ける。
+        alertPlayer = AlertPlayer(applicationContext).also { it.prepare() }
         window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
         applyImmersiveMode()
         DeviceAdmin.disableStatusBar(this)
@@ -142,8 +155,38 @@ class MainActivity : ComponentActivity() {
             }
         }
 
-        LaunchedEffect(mode, ipAddress, capabilities, lux) {
-            status = WebCtlServer.Status(mode.name, ipAddress, capabilities, lux)
+        // 天気。取得に失敗しても時計は必ず出す方針なので、null なら欄ごと畳む。
+        var weather by remember { mutableStateOf<TodayWeather?>(null) }
+        LaunchedEffect(settings.weatherAreaCode) {
+            while (true) {
+                weather = weatherRepository.load(settings.weatherAreaCode)
+                delay(DeckConfig.WEATHER_REFRESH_MINUTES * 60_000L)
+            }
+        }
+
+        // タイマーとアラームの発報判定。毎秒の tick で見る。
+        // 発報は AlertCenter が一度だけ true を返すので、音が二重に鳴らない。
+        LaunchedEffect(settings.alarmEnabled, settings.alarmMinutes) {
+            while (true) {
+                val fired = AlertCenter.tick(
+                    now = LocalDateTime.now(),
+                    alarmEnabled = settings.alarmEnabled,
+                    alarmMinutesOfDay = settings.alarmMinutes,
+                )
+                if (fired) {
+                    Log.i(TAG, "発報: ${AlertCenter.firing}")
+                    // 消灯中でも必ず見えるようにする。ここで戻さないと
+                    // 真っ暗な画面で音だけが鳴る。
+                    wakeUntil = LocalDateTime.now().plusMinutes(ALERT_WAKE_MINUTES)
+                    withContext(Dispatchers.IO) { Backlight.write(settings.dayBacklight) }
+                    AlertCenter.firing?.let { alertPlayer.fire(it) }
+                }
+                delay(1_000L)
+            }
+        }
+
+        LaunchedEffect(mode, ipAddress, capabilities, lux, weather) {
+            status = WebCtlServer.Status(mode.name, ipAddress, capabilities, lux, weather)
         }
 
         LaunchedEffect(settings) { Log.i(TAG, "settings=$settings") }
@@ -168,6 +211,7 @@ class MainActivity : ComponentActivity() {
             ClockScreen(
                 nowState = nowState,
                 palette = palette,
+                weather = weather,
                 ipAddress = ipAddress,
             )
 
@@ -180,6 +224,17 @@ class MainActivity : ComponentActivity() {
                         onDismiss = { showDiagnostics = false },
                     )
                 }
+            }
+
+            // 発報中はすべての上に出す。診断や消灯より優先度が高い。
+            AlertCenter.firing?.let { label ->
+                AlertOverlay(
+                    label = label,
+                    onDismiss = {
+                        alertPlayer.stop()
+                        AlertCenter.dismiss()
+                    },
+                )
             }
         }
     }
@@ -201,6 +256,7 @@ class MainActivity : ComponentActivity() {
 
     override fun onDestroy() {
         webServer?.stop()
+        alertPlayer.release()
         super.onDestroy()
     }
 
