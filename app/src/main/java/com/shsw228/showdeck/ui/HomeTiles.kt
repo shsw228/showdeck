@@ -263,6 +263,13 @@ fun FocusTile(
     pomodoro: PomodoroState?,
     settings: DeckSettings,
     completedToday: Int,
+    /**
+     * いま集中している対象。空なら区間名（`Work` / `Break`）を出す。
+     *
+     * 主役として大きく置くタイルでは、区間名だけだと横が空いたうえに
+     * 情報として薄い。「何に取り組んでいるか」がここの主題。
+     */
+    focusLabel: String,
     now: LocalDateTime,
     palette: DeckPalette,
     onClick: () -> Unit,
@@ -290,15 +297,35 @@ fun FocusTile(
                 Label("Focus", palette.readoutMut)
                 Gap(DeckMetrics.Space1)
                 BasicText(
-                    text = pomodoro?.phase?.label ?: "Not started",
-                    style = DeckType.Body.copy(color = palette.readoutFg),
-                    maxLines = 1,
+                    text = when {
+                        pomodoro == null -> "Not started"
+                        focusLabel.isNotBlank() -> focusLabel
+                        else -> pomodoro.phase.label
+                    },
+                    // 主役として置くときは大きく。同じタイルを大小で使うので、
+                    // 文字の段もリングの大きさに合わせて上げる。
+                    style = if (spec == RingSpec.Compact) {
+                        DeckType.Body.copy(color = palette.readoutFg)
+                    } else {
+                        DeckType.TitleSm.copy(color = palette.readoutFg)
+                    },
+                    maxLines = 2,
                     overflow = TextOverflow.Ellipsis,
                 )
                 Gap(DeckMetrics.Space1)
                 BasicText(
-                    text = "$completedToday of ${settings.pomodoroDailyGoal}",
+                    text = buildString {
+                        append(completedToday)
+                        append(" of ")
+                        append(settings.pomodoroDailyGoal)
+                        append(" today")
+                        // 区間名は名前を出したぶん行き場が無くなるので、
+                        // ここに添える。走っているのが作業か休憩かは要る情報。
+                        pomodoro?.let { append(" · ${it.phase.label.lowercase()}") }
+                    },
                     style = DeckType.Meta.copy(color = palette.readoutMut),
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
                 )
             }
         }

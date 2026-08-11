@@ -220,6 +220,14 @@ private fun HeaderClock(
     }
 
     Column(horizontalAlignment = Alignment.End) {
+        // 下端を揃える。
+        //
+        // `alignByBaseline()` を使ってはいけない。[RollingClock] の中身は
+        // `AnimatedContent` で、遷移中は新旧の桁が同居して公開する
+        // ベースラインが変わる。桁が転がる 180ms のあいだだけ秒が跳ねた。
+        //
+        // 代わりに時計の行高を 1.0 にしてある（[DeckType.Clock]）。行箱の
+        // 下端が字の足元とほぼ一致するので、箱の下端を揃えれば足元も揃う。
         Row(verticalAlignment = Alignment.Bottom) {
             RollingClock(
                 text = timeText,
@@ -228,7 +236,6 @@ private fun HeaderClock(
             if (suffix.isNotEmpty()) {
                 Gap(DeckMetrics.Space1)
                 // 秒も桁送りする。ただし毎秒動くので転がる時間は短く。
-                // AM/PM のときは数字が無いので、そのまま置き換わるだけ。
                 RollingClock(
                     text = suffix,
                     style = DeckType.ClockSuffix.copy(color = palette.ink3),
