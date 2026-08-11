@@ -60,7 +60,8 @@ Android 化した Echo Show 5 第2世代（`cronos`）向けの常駐ダッシ�
 ## Build, Test, and Development Commands
 
 ```sh
-./scripts/fetch-platform-keys.sh  # 初回のみ。これが無いとインストールできない
+./scripts/fetch-platform-keys.sh   # 初回のみ。これが無いとインストールできない
+./scripts/fetch-android-skills.sh  # Google の Android skills を .claude/skills/ に取得
 ./gradlew assembleRelease      # ビルド
 ./gradlew installRelease       # 実機へインストール
 ./scripts/check-device.sh      # 端末の素性を確認（何も変更しない）

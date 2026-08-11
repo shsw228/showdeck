@@ -16,3 +16,7 @@ local.properties
 # AOSP の公開テスト鍵。秘密ではないが出所を明示するためリポジトリには入れず
 # scripts/fetch-platform-keys.sh で都度取得する。
 keys/
+
+# Google の Android skills（Apache-2.0）。再頒布の条件を背負わず、
+# 上流の更新にも追従できるよう scripts/fetch-android-skills.sh で都度取得する。
+.claude/skills/
