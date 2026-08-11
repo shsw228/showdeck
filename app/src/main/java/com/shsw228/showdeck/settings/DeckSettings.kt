@@ -82,6 +82,14 @@ data class DeckSettings(
      * 0 で戻さない。[com.shsw228.showdeck.system.HomeWatchdog] が使う。
      */
     val returnAfterSeconds: Int,
+
+    /**
+     * 既定のホームアプリとして固定するか。
+     *
+     * 固定すると選択ダイアログが出なくなり、他のランチャーに奪われない。
+     * 既定は false（普通の Android 端末としても使えるようにしておく）。
+     */
+    val homeLauncher: Boolean,
 ) {
     /** 空行と前後の空白を落とした購読先。 */
     val icsUrlList: List<String>
@@ -136,6 +144,7 @@ data class DeckSettings(
             clock24 = DeckConfig.CLOCK_24H,
             showSeconds = DeckConfig.SHOW_SECONDS,
             returnAfterSeconds = DeckConfig.RETURN_AFTER_SECONDS,
+            homeLauncher = DeckConfig.HOME_LAUNCHER,
         )
     }
 }

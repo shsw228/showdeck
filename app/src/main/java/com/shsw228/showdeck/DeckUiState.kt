@@ -52,6 +52,7 @@ data class DeckUiState(
 
     /** 音量を操作した直後だけ入る。数秒で消える。 */
     val volume: VolumeLevel? = null,
+
 ) {
     /** そのモードで sysfs に書くべきバックライトの raw 値。 */
     val backlightRaw: Int get() = backlightFor(mode, settings)

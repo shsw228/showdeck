@@ -121,6 +121,7 @@ class MainActivity : ComponentActivity() {
                     },
                     lightSensor = { lightSensorFlow(appContext) },
                     ipAddressProvider = { localIpAddress(appContext) },
+                    applyHomeLauncher = { DeviceAdmin.pinAsHomeLauncher(appContext, it) },
                 )
             }
         }
@@ -132,7 +133,7 @@ class MainActivity : ComponentActivity() {
         settingsStore = SettingsStore(applicationContext)
         window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
         applyImmersiveMode()
-        DeviceAdmin.disableStatusBar(this)
+        DeviceAdmin.enableStatusBar(this)
         startWebServer()
         advertiser.start(DeckConfig.WEB_PORT)
 
@@ -179,6 +180,12 @@ class MainActivity : ComponentActivity() {
                 setHomeLayout = { viewModel.updateSettingsOnDevice { s -> s.copy(homeLayout = it) } },
                 setClock24 = { viewModel.updateSettingsOnDevice { s -> s.copy(clock24 = it) } },
                 setShowSeconds = { viewModel.updateSettingsOnDevice { s -> s.copy(showSeconds = it) } },
+                setHomeLauncher = { pinned ->
+                    // ポリシーは即座に効かせる。設定だけ変えて再起動待ちにすると、
+                    // 切ったつもりが効いていない状態になる。
+                    DeviceAdmin.pinAsHomeLauncher(this@MainActivity, pinned)
+                    viewModel.updateSettingsOnDevice { s -> s.copy(homeLauncher = pinned) }
+                },
 
                 adjustBrightness = { delta ->
                     viewModel.updateSettingsOnDevice { s ->
@@ -380,15 +387,15 @@ class MainActivity : ComponentActivity() {
      * Android の設定を開いたまま放置されると、翌朝までダッシュボードが出ない。
      * 戻ってきたら [onResume] で取り消す。
      */
+
     /**
      * 音量キーを自分で捌く。
      *
-     * Device Owner でステータスバーを無効化しているので、`SystemUI` が動いていても
-     * 音量パネルが出ない。キー自体は届いて音量も変わるが、手応えが無いので
-     * 何も起きていないように見える。ここで受けてインジケータを出す。
+     * この ROM は SystemUI の音量ダイアログを持っていない（ステータスバーの
+     * 無効化を解除しても、キーを通しても出ない）。押しても何も起きないように
+     * 見えるので、ここで受けてインジケータを出す。
      *
-     * 対象は**アラームの音**。この端末が鳴らすのはアラームと読み上げだけで、
-     * 音楽の音量を動かしても何も変わらない。
+     * 対象は**アラームの音**。この端末が鳴らすのはアラームと読み上げだけ。
      */
     override fun onKeyDown(keyCode: Int, event: android.view.KeyEvent?): Boolean {
         val direction = when (keyCode) {
@@ -399,8 +406,6 @@ class MainActivity : ComponentActivity() {
         val audio = getSystemService(AudioManager::class.java)
             ?: return super.onKeyDown(keyCode, event)
 
-        // FLAG_SHOW_UI は付けない。SystemUI が居ないので何も出ないうえ、
-        // 居る環境では二重に出る。
         audio.adjustStreamVolume(AudioManager.STREAM_ALARM, direction, 0)
         viewModel.showVolume(
             current = audio.getStreamVolume(AudioManager.STREAM_ALARM),

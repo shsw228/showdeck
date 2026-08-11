@@ -13,8 +13,8 @@ import com.shsw228.showdeck.MainActivity
  * Device Owner として振る舞うためのレシーバ。
  *
  * `dpm set-device-owner` で有効化する（scripts/setup-device.sh 参照）。
- * Device Owner になるとステータスバーを SystemUI ごと止めずに無効化できるので、
- * `pm disable-user com.android.systemui` より穏当で戻しやすい。
+ * 使うのはホームアプリの固定だけ。ステータスバーは没入モードで隠すので、
+ * ポリシーでの無効化はしない（[DeviceAdmin.enableStatusBar] を参照）。
  */
 class AdminReceiver : DeviceAdminReceiver()
 
@@ -30,30 +30,44 @@ object DeviceAdmin {
     }
 
     /**
-     * ステータスバーを無効化する。Device Owner でなければ黙って何もしない。
+     * ステータスバーの無効化を**解除**する。
      *
-     * セットアップの順序（アプリ先入れ → dpm 設定）に依存させたくないので、
-     * 失敗を握りつぶして起動そのものは必ず通す。
+     * バーを隠すのは没入モード（`WindowInsetsController.hide`）の仕事で、
+     * ポリシーで無効化する必要はない。`setStatusBarDisabled(true)` は
+     * 通知シェードだけでなく**音量ダイアログまで止める**ので、音量キーを
+     * 押しても何も出なくなる。
+     *
+     * 過去に有効化した端末が残っているので、毎起動で明示的に false に戻す。
      */
-    fun disableStatusBar(context: Context) {
+    fun enableStatusBar(context: Context) {
         if (!isDeviceOwner(context)) {
-            Log.i(TAG, "Device Owner ではないためステータスバー無効化をスキップ")
+            Log.i(TAG, "Device Owner ではないためステータスバーの設定をスキップ")
             return
         }
         runCatching {
             val dpm = context.getSystemService(Context.DEVICE_POLICY_SERVICE) as DevicePolicyManager
-            dpm.setStatusBarDisabled(component(context), true)
-        }.onFailure { Log.w(TAG, "ステータスバー無効化に失敗", it) }
+            dpm.setStatusBarDisabled(component(context), false)
+        }.onFailure { Log.w(TAG, "ステータスバーの設定に失敗", it) }
     }
 
     /**
-     * 自分自身を既定のホームアプリとして固定する。
+     * 自分自身を既定のホームアプリとして固定する／解除する。
      *
-     * `cmd package set-home-activity` と違い、選択ダイアログが二度と出なくなる。
-     * 他のランチャーを入れても奪われないので、据え置き機ではこちらが正解。
+     * **既定は解除。** 固定すると選択ダイアログが二度と出なくなり、他の
+     * ランチャーを入れても奪われない。据え置き専用にするなら有用だが、
+     * 普通の Android 端末としても使いたい場合には邪魔になる。
+     * 設定（`DeckSettings.homeLauncher`）で選ぶ。
      */
-    fun pinAsHomeLauncher(context: Context) {
+    fun pinAsHomeLauncher(context: Context, pinned: Boolean) {
         if (!isDeviceOwner(context)) return
+        if (!pinned) {
+            // 固定を外す。ホームキーを押すと選択ダイアログが出る状態に戻る。
+            runCatching {
+                val dpm = context.getSystemService(Context.DEVICE_POLICY_SERVICE) as DevicePolicyManager
+                dpm.clearPackagePersistentPreferredActivities(component(context), context.packageName)
+            }.onFailure { Log.w(TAG, "ホームアプリ固定の解除に失敗", it) }
+            return
+        }
         runCatching {
             val dpm = context.getSystemService(Context.DEVICE_POLICY_SERVICE) as DevicePolicyManager
             val homeFilter = IntentFilter(Intent.ACTION_MAIN).apply {

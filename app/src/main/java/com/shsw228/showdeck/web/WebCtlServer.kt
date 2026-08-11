@@ -121,6 +121,9 @@ class WebCtlServer(
             homeLayout = params["homeLayout"] ?: current.homeLayout,
             clock24 = params.containsKey("clock24"),
             showSeconds = params.containsKey("showSeconds"),
+            homeLauncher = params.containsKey("homeLauncher"),
+            returnAfterSeconds = params.int("returnAfter", current.returnAfterSeconds)
+                .coerceIn(0, 3600),
         )
         runBlocking { viewModel.updateSettings(updated) }
         Log.i(TAG, "設定を更新: $updated")
@@ -488,6 +491,10 @@ private fun renderIndex(state: DeckUiState): String {
       </select></label>
     <label><span>24 時間表記</span><input type="checkbox" name="clock24" ${if (s.clock24) "checked" else ""}></label>
     <label><span>秒を出す</span><input type="checkbox" name="showSeconds" ${if (s.showSeconds) "checked" else ""}></label>
+    <label><span>ホームアプリとして固定</span><input type="checkbox" name="homeLauncher" ${if (s.homeLauncher) "checked" else ""}></label>
+    <label><span>他アプリから戻る秒数 (0 で戻さない)</span><input type="number" name="returnAfter" min="0" max="3600" value="${s.returnAfterSeconds}"></label>
+    <p class="hint">固定すると選択ダイアログが出なくなり、他のランチャーに奪われない。
+       普通の Android 端末としても使うなら切っておく。</p>
   </fieldset>
 
   <div class="save"><button type="submit">保存</button></div>

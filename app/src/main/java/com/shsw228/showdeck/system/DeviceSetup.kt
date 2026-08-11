@@ -78,8 +78,7 @@ object DeviceSetup {
         }
 
         if (caps.isDeviceOwner) {
-            DeviceAdmin.disableStatusBar(context)
-            DeviceAdmin.pinAsHomeLauncher(context)
+            DeviceAdmin.enableStatusBar(context)
         }
     }
 

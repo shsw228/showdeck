@@ -119,6 +119,10 @@ private fun DisplaySection(
         Toggle("24-hour clock", settings.clock24, palette) { actions.setClock24(it) }
         Gap(DeckMetrics.Space2)
         Toggle("Show seconds", settings.showSeconds, palette) { actions.setShowSeconds(it) }
+        Gap(DeckMetrics.Space2)
+        // 固定すると選択ダイアログが出なくなる。普通の端末としても使いたい
+        // なら切っておく。
+        Toggle("Use as home app", settings.homeLauncher, palette) { actions.setHomeLauncher(it) }
     }
 }
 

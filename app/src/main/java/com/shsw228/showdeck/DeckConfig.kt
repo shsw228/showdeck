@@ -122,6 +122,14 @@ object DeckConfig {
      */
     const val RETURN_AFTER_SECONDS = 180
 
+    /**
+     * 既定のホームアプリとして固定するか。
+     *
+     * 既定は固定しない。固定は「この端末をダッシュボード専用にする」判断で、
+     * アプリを入れた副作用として起きてよいものではない。
+     */
+    const val HOME_LAUNCHER = false
+
     /** カレンダーを取りに行く間隔。 */
     const val CALENDAR_REFRESH_MINUTES = 15L
 

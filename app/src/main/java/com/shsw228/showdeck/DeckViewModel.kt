@@ -45,6 +45,8 @@ class DeckViewModel(
     private val deviceSetup: suspend () -> DeviceSetup.Capabilities,
     private val lightSensor: () -> Flow<Float>,
     private val ipAddressProvider: () -> String?,
+    /** ホームアプリ固定の反映。Context が要るので Activity 側で渡す。 */
+    private val applyHomeLauncher: (Boolean) -> Unit = {},
     private val backlight: BacklightControl = BacklightControl.Sysfs,
     private val clock: () -> LocalDateTime = LocalDateTime::now,
 ) : ViewModel() {
@@ -85,6 +87,7 @@ class DeckViewModel(
 
     /** 音量インジケータを消す予約。押すたびに畳んで張り直す。 */
     private var volumeHide: Job? = null
+
 
     val canControlBacklight: Boolean get() = backlight.canControl
 
@@ -180,12 +183,7 @@ class DeckViewModel(
         _uiState.update { it.copy(timers = Countdowns.update(it.timers, id) { t -> t.reset() }) }
     }
 
-    /**
-     * 音量のインジケータを出す。
-     *
-     * 押している間は消さないよう、押すたびに待ち直す。前の待ちを畳まないと
-     * 最初の 1 回目の期限で消えてしまう。
-     */
+    /** 音量のインジケータを出す。押すたびに待ち直す（前の期限で消さない）。 */
     fun showVolume(current: Int, max: Int) {
         _uiState.update { it.copy(volume = VolumeLevel(current, max)) }
         volumeHide?.cancel()
@@ -227,6 +225,8 @@ class DeckViewModel(
                 recomputeMode()
                 refreshWeather(settings)
                 refreshCalendar(settings)
+                // 設定を消したり Web から変えたときも追従させる。
+                applyHomeLauncher(settings.homeLauncher)
             }
         }
     }

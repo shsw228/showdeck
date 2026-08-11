@@ -63,4 +63,7 @@ data class DeckActions(
 
     /** 天気の地点を現在地に合わせる。取れなければ何もしない。 */
     val useCurrentLocation: () -> Unit = {},
+
+    /** 既定のホームアプリとして固定するか。 */
+    val setHomeLauncher: (Boolean) -> Unit = {},
 )

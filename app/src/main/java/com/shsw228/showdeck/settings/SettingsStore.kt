@@ -61,6 +61,7 @@ class SettingsStore(private val context: Context) {
             prefs[CLOCK_24] = settings.clock24
             prefs[SHOW_SECONDS] = settings.showSeconds
             prefs[RETURN_AFTER] = settings.returnAfterSeconds
+            prefs[HOME_LAUNCHER] = settings.homeLauncher
         }
     }
 
@@ -105,6 +106,7 @@ class SettingsStore(private val context: Context) {
             showSeconds = this[SHOW_SECONDS] ?: d.showSeconds,
             returnAfterSeconds =
                 (this[RETURN_AFTER] ?: d.returnAfterSeconds).coerceIn(0, 3600),
+            homeLauncher = this[HOME_LAUNCHER] ?: d.homeLauncher,
         )
     }
 
@@ -139,6 +141,7 @@ class SettingsStore(private val context: Context) {
         val CLOCK_24 = booleanPreferencesKey("clock_24")
         val SHOW_SECONDS = booleanPreferencesKey("show_seconds")
         val RETURN_AFTER = intPreferencesKey("return_after")
+        val HOME_LAUNCHER = booleanPreferencesKey("home_launcher")
     }
 }
 
