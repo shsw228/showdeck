@@ -270,8 +270,12 @@ fun FocusTile(
     // 他のタイルと同じ明るい面。濃色は各画面の主役 1 枚に取っておく。
     // 主役として置きたいときは大きさ（[spec]）と文字の段で示す。
     Tile(palette, modifier, onClick) {
+        // 小見出しはタイル直下の先頭。他のタイルと同じ位置に出す。
+        Label("Focus", palette.tide)
+        Gap(DeckMetrics.Space2)
+
         Row(
-            modifier = Modifier.fillMaxSize(),
+            modifier = Modifier.fillMaxWidth().weight(1f),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             ProgressRing(
@@ -287,8 +291,6 @@ fun FocusTile(
             }
             Gap(DeckMetrics.Space3)
             Column(Modifier.weight(1f)) {
-                Label("Focus", palette.tide)
-                Gap(DeckMetrics.Space1)
                 BasicText(
                     text = when {
                         pomodoro == null -> "Not started"
@@ -301,7 +303,8 @@ fun FocusTile(
                     } else {
                         DeckType.TitleSm.copy(color = palette.ink)
                     },
-                    maxLines = 2,
+                    // Compact は横が狭い。2 行にすると単語の途中で折れるので 1 行で省略する。
+                    maxLines = if (spec == RingSpec.Compact) 1 else 2,
                     overflow = TextOverflow.Ellipsis,
                 )
                 Gap(DeckMetrics.Space1)
@@ -359,7 +362,6 @@ fun TimersTile(
             modifier = Modifier.weight(1f).fillMaxWidth(),
             verticalArrangement = Arrangement.Center,
         ) {
-            Hidden(timers.size - TIMER_ROWS, palette)
             timers.take(TIMER_ROWS).forEach { timer ->
                 Row(
                     modifier = Modifier.fillMaxWidth(),
@@ -389,6 +391,7 @@ fun TimersTile(
                 )
                 Gap(DeckMetrics.Space3)
             }
+            Hidden(timers.size - TIMER_ROWS, palette)
         }
     }
 }
@@ -505,8 +508,13 @@ private const val TREND_SLOTS = 6
 /** Home の予定一覧に出す行数。 */
 private const val AGENDA_ROWS = 4
 
-/** Home のタイマー一覧に出す行数。 */
-private const val TIMER_ROWS = 2
+/**
+ * Home のタイマー一覧に出す行数。
+ *
+ * 1 本だけ。文字を大きくしたぶん 2 本ではタイルから溢れる。残りは
+ * 「+N more」で数だけ伝え、Timers 画面で見る。
+ */
+private const val TIMER_ROWS = 1
 
 private val HOUR: DateTimeFormatter = DateTimeFormatter.ofPattern("H", Locale.ENGLISH)
 internal val TIME: DateTimeFormatter = DateTimeFormatter.ofPattern("H:mm", Locale.ENGLISH)

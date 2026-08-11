@@ -1,5 +1,6 @@
 package com.shsw228.showdeck
 
+import android.media.AudioManager
 import android.os.Bundle
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.core.tween
@@ -33,6 +34,7 @@ import com.shsw228.showdeck.alert.AlertPlayer
 import com.shsw228.showdeck.settings.SettingsStore
 import com.shsw228.showdeck.system.DeviceSetup
 import com.shsw228.showdeck.system.HomeWatchdog
+import com.shsw228.showdeck.system.Locator
 import com.shsw228.showdeck.system.ServiceAdvertiser
 import com.shsw228.showdeck.system.openAndroidSettings
 import com.shsw228.showdeck.system.lightSensorFlow
@@ -48,6 +50,7 @@ import com.shsw228.showdeck.ui.HomeScreen
 import com.shsw228.showdeck.ui.NavStyle
 import com.shsw228.showdeck.ui.TimersScreen
 import com.shsw228.showdeck.ui.SettingsScreen
+import com.shsw228.showdeck.ui.VolumeOverlay
 import com.shsw228.showdeck.ui.WeatherScreen
 
 import com.shsw228.showdeck.ui.theme.DeckTheme
@@ -235,6 +238,16 @@ class MainActivity : ComponentActivity() {
                 },
 
                 openAndroidSettings = { openAndroidSettings(this@MainActivity) },
+                useCurrentLocation = {
+                    // 取れなければ何もしない。位置が来ないことで天気が消えるのは筋が悪い。
+                    Locator.lastKnown(applicationContext)?.let { at ->
+                        viewModel.updateSettingsOnDevice { s ->
+                            // 地名は空にして OpenWeatherMap が返す名前を使う。
+                            // 引っ越したのに前の地名が出続けるほうが混乱する。
+                            s.copy(weatherLat = at.latitude, weatherLon = at.longitude, placeName = "")
+                        }
+                    }
+                },
             )
         }
 
@@ -327,6 +340,8 @@ class MainActivity : ComponentActivity() {
             }
 
 
+            VolumeOverlay(level = state.volume, palette = palette)
+
             // 発報中はすべての上に出す。診断や予報より優先度が高い。
             state.firing?.let { alert ->
                 AlertOverlay(
@@ -365,6 +380,35 @@ class MainActivity : ComponentActivity() {
      * Android の設定を開いたまま放置されると、翌朝までダッシュボードが出ない。
      * 戻ってきたら [onResume] で取り消す。
      */
+    /**
+     * 音量キーを自分で捌く。
+     *
+     * Device Owner でステータスバーを無効化しているので、`SystemUI` が動いていても
+     * 音量パネルが出ない。キー自体は届いて音量も変わるが、手応えが無いので
+     * 何も起きていないように見える。ここで受けてインジケータを出す。
+     *
+     * 対象は**アラームの音**。この端末が鳴らすのはアラームと読み上げだけで、
+     * 音楽の音量を動かしても何も変わらない。
+     */
+    override fun onKeyDown(keyCode: Int, event: android.view.KeyEvent?): Boolean {
+        val direction = when (keyCode) {
+            android.view.KeyEvent.KEYCODE_VOLUME_UP -> AudioManager.ADJUST_RAISE
+            android.view.KeyEvent.KEYCODE_VOLUME_DOWN -> AudioManager.ADJUST_LOWER
+            else -> return super.onKeyDown(keyCode, event)
+        }
+        val audio = getSystemService(AudioManager::class.java)
+            ?: return super.onKeyDown(keyCode, event)
+
+        // FLAG_SHOW_UI は付けない。SystemUI が居ないので何も出ないうえ、
+        // 居る環境では二重に出る。
+        audio.adjustStreamVolume(AudioManager.STREAM_ALARM, direction, 0)
+        viewModel.showVolume(
+            current = audio.getStreamVolume(AudioManager.STREAM_ALARM),
+            max = audio.getStreamMaxVolume(AudioManager.STREAM_ALARM),
+        )
+        return true
+    }
+
     override fun onPause() {
         super.onPause()
         HomeWatchdog.arm(applicationContext, viewModel.uiState.value.settings.returnAfterSeconds)

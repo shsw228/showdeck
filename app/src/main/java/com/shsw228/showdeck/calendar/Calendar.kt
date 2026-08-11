@@ -29,8 +29,16 @@ data class CalendarEvent(
     val tone: EventTone
         get() = EventTone.entries[Math.floorMod(uid.hashCode(), EventTone.entries.size)]
 
-    fun occursOn(date: LocalDate): Boolean =
-        !start.toLocalDate().isAfter(date) && !end.toLocalDate().isBefore(date)
+    /**
+     * その日に掛かっているか。
+     *
+     * **終日予定の `DTEND` は排他的。** 8/10 の終日予定は `DTEND:20260811` で
+     * 届くので、終了日を含めて判定すると翌日にも出る。
+     */
+    fun occursOn(date: LocalDate): Boolean {
+        val last = if (allDay) end.toLocalDate().minusDays(1) else end.toLocalDate()
+        return !start.toLocalDate().isAfter(date) && !last.isBefore(date)
+    }
 }
 
 /**

@@ -11,8 +11,10 @@ import com.shsw228.showdeck.settings.DeckSettings
 import com.shsw228.showdeck.settings.SettingsStore
 import com.shsw228.showdeck.system.Backlight
 import com.shsw228.showdeck.system.DeviceSetup
+import com.shsw228.showdeck.ui.VolumeLevel
 import com.shsw228.showdeck.weather.WeatherRepository
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -80,6 +82,9 @@ class DeckViewModel(
 
     /** 最後に取りに行った購読先。変わっていなければ取り直さない。 */
     private var lastCalendarUrls: List<String>? = null
+
+    /** 音量インジケータを消す予約。押すたびに畳んで張り直す。 */
+    private var volumeHide: Job? = null
 
     val canControlBacklight: Boolean get() = backlight.canControl
 
@@ -173,6 +178,21 @@ class DeckViewModel(
 
     fun resetTimer(id: Long) {
         _uiState.update { it.copy(timers = Countdowns.update(it.timers, id) { t -> t.reset() }) }
+    }
+
+    /**
+     * 音量のインジケータを出す。
+     *
+     * 押している間は消さないよう、押すたびに待ち直す。前の待ちを畳まないと
+     * 最初の 1 回目の期限で消えてしまう。
+     */
+    fun showVolume(current: Int, max: Int) {
+        _uiState.update { it.copy(volume = VolumeLevel(current, max)) }
+        volumeHide?.cancel()
+        volumeHide = viewModelScope.launch {
+            delay(VOLUME_VISIBLE_MILLIS)
+            _uiState.update { it.copy(volume = null) }
+        }
     }
 
     // --- カレンダー ---
@@ -385,6 +405,9 @@ class DeckViewModel(
     }
 
     private companion object {
+        /** 音量インジケータを出しておく時間。 */
+        const val VOLUME_VISIBLE_MILLIS = 1_500L
+
         const val TAG = "ShowDeck"
 
         /** DisplayPowerController に書き戻された輝度を押し戻す間隔。読み取りだけなら安い。 */

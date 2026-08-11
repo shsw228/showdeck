@@ -32,6 +32,9 @@
       system_server が面倒を見る。受信するコードが無い権限は残さない。
     -->
 
+    <!-- 天気の地点を現在地から取る。system UID なのでインストール時に付く。 -->
+    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
+
     <application
         android:allowBackup="false"
         android:icon="@drawable/ic_showdeck"

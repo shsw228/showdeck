@@ -60,4 +60,7 @@ data class DeckActions(
      * 止めてある。**ここが Android の設定への唯一の入口。**
      */
     val openAndroidSettings: () -> Unit = {},
+
+    /** 天気の地点を現在地に合わせる。取れなければ何もしない。 */
+    val useCurrentLocation: () -> Unit = {},
 )

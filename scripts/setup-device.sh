@@ -12,7 +12,6 @@
 # 使い方:
 #   ./scripts/setup-device.sh                 # 一括適用
 #   ./scripts/setup-device.sh --serial XXXX   # 端末を指定
-#   ./scripts/setup-device.sh --no-systemui   # SystemUI も畳む（要再起動）
 #
 set -uo pipefail
 
@@ -20,12 +19,10 @@ PKG="com.shsw228.showdeck"
 ACTIVITY="$PKG/.MainActivity"
 ADMIN="$PKG/.admin.AdminReceiver"
 SERIAL=""
-DISABLE_SYSTEMUI=0
 
 while [ $# -gt 0 ]; do
   case "$1" in
     --serial) SERIAL="$2"; shift 2 ;;
-    --no-systemui) DISABLE_SYSTEMUI=1; shift ;;
     -h|--help) sed -n '2,20p' "$0"; exit 0 ;;
     *) echo "不明な引数: $1" >&2; exit 1 ;;
   esac
@@ -98,17 +95,20 @@ else
 fi
 
 step "不要な常駐アプリを止める"
-# 実測: MemAvailable が 238MB -> 429MB になった。空きが 30MB しか無い端末なので効く。
 # launcher3 は ShowDeck が置き換えているので純粋に無駄。停止すると 40MB 戻る。
 run "pm disable-user --user 0 com.android.launcher3"
-if [ "$DISABLE_SYSTEMUI" -eq 1 ]; then
-  # SystemUI は system_server が明示的に起動するため、disable しても常駐は続く。
-  # ただし機能を畳むぶん PSS が 62MB -> 24MB に減る。効果を得るには再起動が要る。
-  # 完全に消すには user 0 からのアンインストールが要るが、ブートループの危険があり
-  # この端末は復旧が難しいのでやらない。
-  warn "反映には再起動が必要です。戻すのは revert-device.sh"
-  run "pm disable-user --user 0 com.android.systemui"
-fi
+
+# SystemUI は**止めない。**
+#
+# 止めれば PSS 25MB ぶん空くが（実測。MemAvailable 417MB の 6%）、
+# 代わりに次を失う。
+#
+#   - 標準設定のナビゲーションバー。この端末に物理の戻るキーが無いので、
+#     設定タブから Android 設定を開いたあと戻れなくなる
+#   - 電源長押しメニュー。端末上で再起動も電源オフもできなくなる
+#
+# 音量パネルは失っても構わない（アプリ側でインジケータを出している）。
+# 25MB のためにこれを買うのは損。
 
 step "起動"
 run "am start -n $ACTIVITY"

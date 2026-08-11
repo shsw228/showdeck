@@ -7,6 +7,7 @@ import com.shsw228.showdeck.alert.RunningTimer
 import com.shsw228.showdeck.calendar.CalendarFeed
 import com.shsw228.showdeck.settings.DeckSettings
 import com.shsw228.showdeck.system.DeviceSetup
+import com.shsw228.showdeck.ui.VolumeLevel
 import com.shsw228.showdeck.weather.WeatherSnapshot
 import java.time.LocalDate
 
@@ -48,6 +49,9 @@ data class DeckUiState(
 
     /** Calendar 画面で選んでいる予定。null なら一覧の先頭。 */
     val selectedEventId: String? = null,
+
+    /** 音量を操作した直後だけ入る。数秒で消える。 */
+    val volume: VolumeLevel? = null,
 ) {
     /** そのモードで sysfs に書くべきバックライトの raw 値。 */
     val backlightRaw: Int get() = backlightFor(mode, settings)
