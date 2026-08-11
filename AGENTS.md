@@ -90,6 +90,9 @@ Android 化した Echo Show 5 第2世代（`cronos`）向けの常駐ダッシ�
 - **この ROM に無い adb コマンドがある。** `cmd audio` `media volume`
   `pm clear-package-preferred-activities` `cmd package get-home-activities` は
   いずれも使えなかった。「コマンドが無い」を「機能が無い」と混同しない
+- **debug と release は別の DataStore を持つ。** パッケージが違うので設定も別。
+  debug の画面（初期値）を見ながら release の保存値と比べて、
+  「既定と違う値が入っている」と誤解した。同じビルドで見比べる
 - **debug ビルドを併存させると既定ホームの選択が消える。** debug は
   `applicationIdSuffix = ".debug"` の別パッケージで、これも HOME の候補に入る。
   候補集合が変わると Android は preferred activity を捨てるので、

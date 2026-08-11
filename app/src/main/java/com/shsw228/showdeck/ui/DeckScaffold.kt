@@ -221,8 +221,11 @@ private fun HeaderClock(
             style = DeckType.DateLine,
             color = palette.ink3,
             textAlign = TextAlign.End,
-            maxLines = 2,
-            modifier = Modifier.width(DATE_COLUMN_WIDTH).padding(bottom = DeckMetrics.Space2),
+            // 幅を決め打ちしない。曜日の長さは Wednesday と Friday で倍近く違い、
+            // 固定幅にすると長い日だけ 2 行に折り返す。画面の題名側が
+            // `weight(1f)` で譲るので、必要なだけ取ればいい。
+            maxLines = 1,
+            modifier = Modifier.padding(bottom = DeckMetrics.Space2),
         )
         Gap(DeckMetrics.Space3)
         RollingClock(
@@ -311,7 +314,6 @@ private fun NavDock(
 }
 
 /** 日付欄の幅。「Tuesday, 11 August」が 2 行までで収まる量。 */
-private val DATE_COLUMN_WIDTH = 112.dp
 
 private val HOUR_24: DateTimeFormatter = DateTimeFormatter.ofPattern("HH:mm", Locale.ENGLISH)
 private val HOUR_12: DateTimeFormatter = DateTimeFormatter.ofPattern("hh:mm", Locale.ENGLISH)

@@ -90,11 +90,11 @@ class WebCtlServer(
             nightEndMinutes = params.timeMinutes("nightEnd", current.nightEndMinutes),
             dayBacklight = params.int("dayBacklight", current.dayBacklight).coerceIn(1, 255),
             nightBacklight = params.int("nightBacklight", current.nightBacklight).coerceIn(1, 255),
-            blackoutEnabled = params.containsKey("blackoutEnabled"),
+            blackoutEnabled = flag(params, "blackoutEnabled", current.blackoutEnabled),
             blackoutStartMinutes = params.timeMinutes("blackoutStart", current.blackoutStartMinutes),
             blackoutEndMinutes = params.timeMinutes("blackoutEnd", current.blackoutEndMinutes),
             wakeSeconds = params.int("wakeSeconds", current.wakeSeconds).coerceIn(5, 300),
-            wakeOnLight = params.containsKey("wakeOnLight"),
+            wakeOnLight = flag(params, "wakeOnLight", current.wakeOnLight),
             wakeLuxThreshold = params.int("wakeLux", current.wakeLuxThreshold).coerceIn(1, 1000),
             weatherLat = params.double("weatherLat", current.weatherLat).coerceIn(-90.0, 90.0),
             weatherLon = params.double("weatherLon", current.weatherLon).coerceIn(-180.0, 180.0),
@@ -103,7 +103,7 @@ class WebCtlServer(
             // 他の設定を保存するたびに鍵が消えては困る。
             owmApiKey = params["owmApiKey"]?.trim()?.takeIf { it.isNotBlank() }
                 ?.let { ApiKey(it) } ?: current.owmApiKey,
-            alarmEnabled = params.containsKey("alarmEnabled"),
+            alarmEnabled = flag(params, "alarmEnabled", current.alarmEnabled),
             alarmMinutes = params.timeMinutes("alarmTime", current.alarmMinutes),
             pomodoroWorkMinutes = params.int("pomoWork", current.pomodoroWorkMinutes)
                 .coerceIn(1, 180),
@@ -113,17 +113,17 @@ class WebCtlServer(
                 .coerceIn(1, 120),
             pomodoroRoundsBeforeLongBreak =
                 params.int("pomoRounds", current.pomodoroRoundsBeforeLongBreak).coerceIn(1, 12),
-            pomodoroAutoStartWork = params.containsKey("pomoAutoWork"),
-            pomodoroAutoStartBreak = params.containsKey("pomoAutoBreak"),
+            pomodoroAutoStartWork = flag(params, "pomoAutoWork", current.pomodoroAutoStartWork),
+            pomodoroAutoStartBreak = flag(params, "pomoAutoBreak", current.pomodoroAutoStartBreak),
             pomodoroDailyGoal = params.int("pomoGoal", current.pomodoroDailyGoal).coerceIn(1, 24),
             icsUrls = params["icsUrls"]?.trim() ?: current.icsUrls,
             navStyle = params["navStyle"] ?: current.navStyle,
             homeLayout = params["homeLayout"] ?: current.homeLayout,
-            clock24 = params.containsKey("clock24"),
-            showSeconds = params.containsKey("showSeconds"),
-            homeLauncher = params.containsKey("homeLauncher"),
-            volumeOverlay = params.containsKey("volumeOverlay"),
-            alertSilent = params.containsKey("alertSilent"),
+            clock24 = flag(params, "clock24", current.clock24),
+            showSeconds = flag(params, "showSeconds", current.showSeconds),
+            homeLauncher = flag(params, "homeLauncher", current.homeLauncher),
+            volumeOverlay = flag(params, "volumeOverlay", current.volumeOverlay),
+            alertSilent = flag(params, "alertSilent", current.alertSilent),
             returnAfterSeconds = params.int("returnAfter", current.returnAfterSeconds)
                 .coerceIn(0, 3600),
         )
@@ -423,6 +423,7 @@ private fun renderIndex(state: DeckUiState): String {
 </fieldset>
 
 <form method="post" action="/save">
+    <input type="hidden" name="form" value="1">
   <fieldset>
     <legend>Weather</legend>
     <p class="sub">$weatherStatus</p>
@@ -527,6 +528,24 @@ private fun renderIndex(state: DeckUiState): String {
 </html>
     """.trimIndent()
 }
+
+/**
+ * ON/OFF の読み取り。
+ *
+ * ブラウザのフォームは**未チェックの項目を送らない**ので、フォーム全体が来た
+ * ときは「無い＝false」で正しい。しかし CLI から一部だけ送る POST では、
+ * 書いていない項目まで false になり、無関係な設定が黙って落ちる。
+ *
+ * フォームだけが送る隠しフィールドで区別する。無ければ現状維持を既定にし、
+ * `off` などを明示したときだけ落とす。
+ */
+private fun flag(params: Map<String, String>, name: String, current: Boolean): Boolean {
+    if (params.containsKey("form")) return params.containsKey(name)
+    val given = params[name] ?: return current
+    return given.isEmpty() || given in TRUTHY
+}
+
+private val TRUTHY = setOf("on", "true", "1", "yes")
 
 /** `<select>` の選択済み属性。分岐を HTML に埋めると読めなくなる。 */
 private fun sel(current: String, value: String) = if (current == value) "selected" else ""

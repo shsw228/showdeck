@@ -400,10 +400,12 @@ class MainActivity : ComponentActivity() {
     /**
      * 音量キーを自分で捌く。
      *
-     * `SystemUI` を畳んだ端末では標準のスライダが出ないので、その場合だけ
-     * ここで受ける。設定（`volumeOverlay`）が false ならキーを通す。
+     * 独自のバーを出す設定（`volumeOverlay`）のときだけ受ける。false なら
+     * キーを通し、`SystemUI` の標準スライダに任せる。
      *
-     * 対象は**アラームの音**。この端末が鳴らすのはアラームと読み上げだけ。
+     * 対象は**再生（メディア）の音**。キーを奪ってアラームだけ動かしていたので、
+     * 音量キーで再生音量が変わらなくなっていた。読み上げもこの流れに乗る。
+     * 発報の音量（`STREAM_ALARM`）は Android の設定から変える。
      */
     override fun onKeyDown(keyCode: Int, event: android.view.KeyEvent?): Boolean {
         // 切ってあるときはキーを通す。SystemUI のスライダが出る。
@@ -418,10 +420,10 @@ class MainActivity : ComponentActivity() {
         val audio = getSystemService(AudioManager::class.java)
             ?: return super.onKeyDown(keyCode, event)
 
-        audio.adjustStreamVolume(AudioManager.STREAM_ALARM, direction, 0)
+        audio.adjustStreamVolume(AudioManager.STREAM_MUSIC, direction, 0)
         viewModel.showVolume(
-            current = audio.getStreamVolume(AudioManager.STREAM_ALARM),
-            max = audio.getStreamMaxVolume(AudioManager.STREAM_ALARM),
+            current = audio.getStreamVolume(AudioManager.STREAM_MUSIC),
+            max = audio.getStreamMaxVolume(AudioManager.STREAM_MUSIC),
         )
         return true
     }
@@ -456,10 +458,18 @@ class MainActivity : ComponentActivity() {
         if (hasFocus) applyImmersiveMode()
     }
 
+    /**
+     * ステータスバーだけ隠す。
+     *
+     * **ナビゲーションバーは隠さない。** 隠すと戻るジェスチャーの判定域まで
+     * 消える。この端末に物理の戻るキーは無いので、設定画面に入ったあと
+     * 帰る手段が時間切れだけになる。ヒントの線は端末側で消してあるので、
+     * 隠さなくても画面は取られない。
+     */
     private fun applyImmersiveMode() {
         WindowCompat.setDecorFitsSystemWindows(window, false)
         WindowInsetsControllerCompat(window, window.decorView).apply {
-            hide(WindowInsetsCompat.Type.systemBars())
+            hide(WindowInsetsCompat.Type.statusBars())
             systemBarsBehavior =
                 WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
         }
