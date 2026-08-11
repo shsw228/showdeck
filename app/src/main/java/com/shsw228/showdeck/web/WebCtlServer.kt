@@ -25,8 +25,12 @@ import java.time.LocalTime
  * 状態は自分で持たず [DeckViewModel] から読む。以前はグローバルの
  * `AlertCenter` を直接触っていて、状態の持ち主が画面と二重になっていた。
  *
- * 認証は Basic 認証。宅内 LAN からしか届かない前提は変えていないが、
- * このアプリは system UID で動くぶん無認証で置く危険が通常アプリより大きい。
+ * **認証は無い。** 宅内 LAN からしか届かない前提に寄せている。
+ *
+ * ただしこのアプリは system UID で動くので、この経路から触れる範囲は
+ * 通常のアプリより広い（システム設定、バックライト、logcat）。同じ LAN に
+ * 載った機器はどれも素通しで叩ける。外に出す・信頼できない機器が同居する
+ * ネットワークに置く、といった段階になったら認証を戻すこと。
  */
 class WebCtlServer(
     private val viewModel: DeckViewModel,
@@ -34,13 +38,6 @@ class WebCtlServer(
 ) : NanoHTTPD(port) {
 
     override fun serve(session: IHTTPSession): Response = runCatching {
-        // 認証は全経路の手前で行う。パスごとに書くと、後から増やした経路で
-        // 付け忘れる。system UID で動いている以上、素通しの経路を作らない。
-        val password = state().settings.webPassword.value
-        if (!WebAuth.isAuthorized(session.headers["authorization"], password)) {
-            return@runCatching unauthorized()
-        }
-
         when {
             session.method == Method.POST && session.uri == "/save" -> handleSave(session)
             session.method == Method.POST && session.uri == "/timer" -> handleTimer(session)
@@ -135,19 +132,6 @@ class WebCtlServer(
         viewModel.stopPomodoro()
         return redirectHome()
     }
-
-    /**
-     * 401 を返してブラウザに入力欄を出させる。
-     * パスワードは端末を長押しして診断オーバーレイで確認する。
-     */
-    private fun unauthorized(): Response =
-        newFixedLengthResponse(
-            Response.Status.UNAUTHORIZED,
-            MIME_PLAINTEXT,
-            "認証が必要です。ユーザー名は ${WebAuth.USER}、パスワードは端末を長押しして確認してください。",
-        ).apply {
-            addHeader("WWW-Authenticate", """Basic realm="ShowDeck", charset="UTF-8"""")
-        }
 
     private fun redirectHome(): Response =
         newFixedLengthResponse(Response.Status.REDIRECT, MIME_HTML, "").apply {

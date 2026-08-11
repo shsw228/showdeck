@@ -1,6 +1,12 @@
 package com.shsw228.showdeck
 
 import android.os.Bundle
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.togetherWith
 import android.util.Log
 import android.view.WindowManager
 import androidx.activity.ComponentActivity
@@ -44,7 +50,7 @@ import com.shsw228.showdeck.ui.WeatherScreen
 import com.shsw228.showdeck.ui.theme.paletteFor
 import com.shsw228.showdeck.calendar.CalendarRepository
 import com.shsw228.showdeck.weather.WeatherRepository
-import com.shsw228.showdeck.web.WebAuth
+
 import com.shsw228.showdeck.web.WebCtlServer
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -186,7 +192,24 @@ class MainActivity : ComponentActivity() {
                 // 再コンポーズはこの内側だけに閉じる。
                 val now = nowState.value
 
-                when (destination) {
+                // 画面が切り替わったことが分かるように送る。
+                //
+                // 瞬時に差し替えていたら、ナビを押しても中身が入れ替わるだけで
+                // 「移動した」感じが無かった。行き先の並び順に合わせて左右に
+                // 送ると、どちら向きに動いたかまで伝わる。
+                AnimatedContent(
+                    targetState = destination,
+                    transitionSpec = {
+                        val forward = targetState.ordinal > initialState.ordinal
+                        val slide = if (forward) SLIDE_PX else -SLIDE_PX
+                        (
+                            slideInHorizontally(tween(NAV_MILLIS)) { slide } +
+                                fadeIn(tween(NAV_MILLIS))
+                            ) togetherWith fadeOut(tween(NAV_MILLIS / 2))
+                    },
+                    label = "screen",
+                ) { screen ->
+                    when (screen) {
                     DeckDestination.HOME -> HomeScreen(
                         state = state,
                         now = now,
@@ -223,6 +246,7 @@ class MainActivity : ComponentActivity() {
                         palette = palette,
                         actions = actions,
                     )
+                    }
                 }
             }
 
@@ -230,7 +254,7 @@ class MainActivity : ComponentActivity() {
                 ControlOverlay(
                     state = state,
                     palette = palette,
-                    webUser = WebAuth.USER,
+
                     webPort = DeckConfig.WEB_PORT,
                     // 明るさは押した瞬間に効いてほしいので、いま効いている側だけを動かす。
                     onAdjustBrightness = { delta ->
@@ -310,3 +334,14 @@ class MainActivity : ComponentActivity() {
         const val SOCKET_TIMEOUT_MS = 5000
     }
 }
+
+/** 画面を送る時間。長いと移動が重く、短いと動いたことに気づけない。 */
+private const val NAV_MILLIS = 220
+
+/**
+ * 送る距離（px）。
+ *
+ * 画面幅ぶん動かすと、常時表示の据え置き機では大げさに見える。
+ * 「隣に動いた」と分かる最小限に留める。
+ */
+private const val SLIDE_PX = 48

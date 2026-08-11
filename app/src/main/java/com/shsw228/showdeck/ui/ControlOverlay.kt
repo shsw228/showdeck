@@ -47,7 +47,7 @@ import com.shsw228.showdeck.ui.theme.DeckType
 fun ControlOverlay(
     state: DeckUiState,
     palette: DeckPalette,
-    webUser: String,
+
     webPort: Int,
     onAdjustBrightness: (delta: Int) -> Unit,
     onToggleBlackout: () -> Unit,
@@ -111,11 +111,6 @@ fun ControlOverlay(
                 BasicText(
                     text = "http://${state.ipAddress ?: "?"}:$webPort",
                     style = DeckType.Body.copy(color = palette.readoutFg),
-                )
-                Gap(DeckMetrics.Space2)
-                BasicText(
-                    text = "$webUser / ${state.settings.webPassword.value}",
-                    style = DeckType.Meta.copy(color = palette.readoutMut),
                 )
 
                 Gap(DeckMetrics.Space3)

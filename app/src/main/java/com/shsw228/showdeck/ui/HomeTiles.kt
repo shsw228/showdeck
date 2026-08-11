@@ -276,7 +276,13 @@ fun FocusTile(
     modifier: Modifier = Modifier,
     spec: RingSpec = RingSpec.Compact,
 ) {
-    Readout(palette, modifier, onClick) {
+    // 他のタイルと同じ明るい面。
+    //
+    // 濃色パネルで置いていたら、Home で 1 枚だけ色が反転して浮いた。
+    // 濃色は「その画面の主役 1 つ」に取っておく決めなので、Home に並ぶ
+    // 4 枚のうち 1 枚だけを濃くする理由がない。主役として置きたいときは
+    // 大きさ（[spec]）と文字の段で示す。
+    Tile(palette, modifier, onClick) {
         Row(
             modifier = Modifier.fillMaxSize(),
             verticalAlignment = Alignment.CenterVertically,
@@ -284,17 +290,17 @@ fun FocusTile(
             ProgressRing(
                 fraction = pomodoro?.progress(now, settings.pomodoroConfig) ?: 0f,
                 spec = spec,
-                trackColor = palette.readoutMut.copy(alpha = TRACK_ALPHA),
-                color = DeckPalette.ReadoutAccent,
+                trackColor = palette.line,
+                color = palette.tide,
             ) {
                 BasicText(
                     text = pomodoro?.remainingText(now) ?: "--:--",
-                    style = DeckType.ring(spec.label).copy(color = palette.readoutFg),
+                    style = DeckType.ring(spec.label).copy(color = palette.ink),
                 )
             }
             Gap(DeckMetrics.Space3)
             Column(Modifier.weight(1f)) {
-                Label("Focus", palette.readoutMut)
+                Label("Focus", palette.tide)
                 Gap(DeckMetrics.Space1)
                 BasicText(
                     text = when {
@@ -305,9 +311,9 @@ fun FocusTile(
                     // 主役として置くときは大きく。同じタイルを大小で使うので、
                     // 文字の段もリングの大きさに合わせて上げる。
                     style = if (spec == RingSpec.Compact) {
-                        DeckType.Body.copy(color = palette.readoutFg)
+                        DeckType.Body.copy(color = palette.ink)
                     } else {
-                        DeckType.TitleSm.copy(color = palette.readoutFg)
+                        DeckType.TitleSm.copy(color = palette.ink)
                     },
                     maxLines = 2,
                     overflow = TextOverflow.Ellipsis,
@@ -323,7 +329,7 @@ fun FocusTile(
                         // ここに添える。走っているのが作業か休憩かは要る情報。
                         pomodoro?.let { append(" · ${it.phase.label.lowercase()}") }
                     },
-                    style = DeckType.Meta.copy(color = palette.readoutMut),
+                    style = DeckType.Meta.copy(color = palette.ink3),
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                 )

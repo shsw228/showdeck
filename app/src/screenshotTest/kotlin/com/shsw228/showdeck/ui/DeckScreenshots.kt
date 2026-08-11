@@ -294,7 +294,7 @@ private fun Controls() {
     ControlOverlay(
         state = baseState,
         palette = DeckPalette.Day,
-        webUser = "showdeck",
+
         webPort = 8080,
         onAdjustBrightness = {},
         onToggleBlackout = {},

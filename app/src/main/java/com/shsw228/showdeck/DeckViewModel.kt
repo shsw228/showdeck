@@ -203,9 +203,6 @@ class DeckViewModel(
 
     private fun observeSettings() {
         viewModelScope.launch {
-            // パスワードの生成は DataStore の編集トランザクション内で当該キーだけを触る。
-            // 画面側の設定をまるごと書き戻すと、最初の値が届く前の既定値で潰れる。
-            settingsStore.ensureWebPassword()
             settingsStore.flow.collect { settings ->
                 _uiState.update { it.copy(settings = settings) }
                 recomputeMode()
