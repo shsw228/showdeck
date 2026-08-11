@@ -71,6 +71,12 @@ object DeckConfig {
     const val ALARM_ENABLED = false
     val ALARM_TIME: LocalTime = LocalTime.of(7, 0)
 
+    /** ポモドーロ。広く使われている 25/5/15・4 回を既定にする。 */
+    const val POMODORO_WORK_MINUTES = 25
+    const val POMODORO_SHORT_BREAK_MINUTES = 5
+    const val POMODORO_LONG_BREAK_MINUTES = 15
+    const val POMODORO_ROUNDS_BEFORE_LONG_BREAK = 4
+
     /** 端末内 Web 設定画面のポート。 */
     const val WEB_PORT = 8080
 }

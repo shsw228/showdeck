@@ -28,6 +28,9 @@ class AlertScheduler {
     var firing: FiringAlert? = null
         private set
 
+    var pomodoro: PomodoroState? = null
+        private set
+
     /** アラームを 1 日に何度も鳴らさないための記録。 */
     private var alarmFiredOn: LocalDate? = null
 
@@ -42,7 +45,20 @@ class AlertScheduler {
         timer = null
     }
 
-    /** 発報を止める。タイマーは鳴り終わったら消える。 */
+    fun startPomodoro(config: PomodoroConfig, now: LocalDateTime = LocalDateTime.now()) {
+        pomodoro = initialPomodoro(config, now)
+    }
+
+    fun stopPomodoro() {
+        pomodoro = null
+    }
+
+    /**
+     * 発報を止める。
+     *
+     * ポモドーロは止めない。区間の切り替わりで鳴るたびに止まっては、
+     * 次の区間へ進まず用を成さない。終わらせたいときは [stopPomodoro]。
+     */
     fun dismiss() {
         firing = null
         timer = null
@@ -56,8 +72,19 @@ class AlertScheduler {
      *
      * @return 新たに発報したなら true。音と読み上げを一度だけ出すために使う。
      */
-    fun tick(now: LocalDateTime, alarmEnabled: Boolean, alarmMinutesOfDay: Int): Boolean {
-        if (firing != null) return false
+    fun tick(
+        now: LocalDateTime,
+        alarmEnabled: Boolean,
+        alarmMinutesOfDay: Int,
+        pomodoroConfig: PomodoroConfig,
+    ): Boolean {
+        // ポモドーロは鳴っている最中でも進める。区間の切り替えを止めると、
+        // 発報を放置しているあいだ次の区間が始まらない。
+        val pomodoroFired = advancePomodoro(now, pomodoroConfig)
+
+        if (firing != null) return pomodoroFired
+
+        if (pomodoroFired) return true
 
         timer?.let { running ->
             if (!now.isBefore(running.endsAt)) {
@@ -78,6 +105,25 @@ class AlertScheduler {
             }
         }
 
+        return false
+    }
+
+    /**
+     * 区間が終わっていたら次へ進め、切り替わりを知らせる。
+     *
+     * ラベルには「次に何をするか」を出す。「作業終了」より「休憩」のほうが、
+     * 部屋の向こうから見て次の行動が分かる。
+     */
+    private fun advancePomodoro(now: LocalDateTime, config: PomodoroConfig): Boolean {
+        val current = pomodoro ?: return false
+        if (now.isBefore(current.endsAt)) return false
+
+        val next = advance(current, config, now)
+        pomodoro = next
+        if (firing == null) {
+            firing = FiringAlert(next.phase.label)
+            return true
+        }
         return false
     }
 

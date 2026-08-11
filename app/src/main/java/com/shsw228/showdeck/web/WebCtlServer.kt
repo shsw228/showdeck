@@ -43,6 +43,8 @@ class WebCtlServer(
             session.method == Method.POST && session.uri == "/save" -> handleSave(session)
             session.method == Method.POST && session.uri == "/timer" -> handleTimer(session)
             session.method == Method.POST && session.uri == "/stop" -> handleStop()
+            session.method == Method.POST && session.uri == "/pomodoro" -> handlePomodoro()
+            session.method == Method.POST && session.uri == "/pomodoro-stop" -> handlePomodoroStop()
             session.uri == "/logs" -> handleLogs()
             else -> handleIndex()
         }
@@ -83,6 +85,14 @@ class WebCtlServer(
                 ?.let { ApiKey(it) } ?: current.owmApiKey,
             alarmEnabled = params.containsKey("alarmEnabled"),
             alarmMinutes = params.timeMinutes("alarmTime", current.alarmMinutes),
+            pomodoroWorkMinutes = params.int("pomoWork", current.pomodoroWorkMinutes)
+                .coerceIn(1, 180),
+            pomodoroShortBreakMinutes = params.int("pomoShort", current.pomodoroShortBreakMinutes)
+                .coerceIn(1, 60),
+            pomodoroLongBreakMinutes = params.int("pomoLong", current.pomodoroLongBreakMinutes)
+                .coerceIn(1, 120),
+            pomodoroRoundsBeforeLongBreak =
+                params.int("pomoRounds", current.pomodoroRoundsBeforeLongBreak).coerceIn(1, 12),
         )
         runBlocking { viewModel.updateSettings(updated) }
         Log.i(TAG, "設定を更新: $updated")
@@ -102,6 +112,17 @@ class WebCtlServer(
 
     private fun handleStop(): Response {
         viewModel.dismissAlert()
+        return redirectHome()
+    }
+
+    private fun handlePomodoro(): Response {
+        viewModel.startPomodoro()
+        Log.i(TAG, "ポモドーロ開始")
+        return redirectHome()
+    }
+
+    private fun handlePomodoroStop(): Response {
+        viewModel.stopPomodoro()
         return redirectHome()
     }
 
@@ -173,6 +194,11 @@ private fun renderIndex(state: DeckUiState): String {
             "${state.timer.label} — ${timeOfDay(state.timer.endsAt)} に鳴ります"
         else -> "動作中のタイマーはありません"
     }
+
+    val pomodoroStatus = state.pomodoro?.let {
+        "${it.phase.label} ${it.round} 回目 — ${timeOfDay(it.endsAt)} まで"
+    } ?: "動作していません（${s.pomodoroWorkMinutes}分 / ${s.pomodoroShortBreakMinutes}分 / " +
+        "${s.pomodoroRoundsBeforeLongBreak}回ごとに${s.pomodoroLongBreakMinutes}分）"
 
     val weatherStatus = state.weather?.let {
         buildString {
@@ -264,6 +290,19 @@ private fun renderIndex(state: DeckUiState): String {
   </form>
 </fieldset>
 
+<fieldset>
+  <legend>ポモドーロ</legend>
+  <p class="sub">$pomodoroStatus</p>
+  <form method="post" action="/pomodoro" class="inline">
+    <button type="submit">開始</button>
+  </form>
+  <form method="post" action="/pomodoro-stop" class="inline">
+    <button type="submit" class="secondary">終了</button>
+  </form>
+  <p class="hint">区間が終わるたびに鳴り、次の区間へ自動で進む。端末を長押しした
+     操作パネルからも開始できる。</p>
+</fieldset>
+
 <form method="post" action="/save">
   <fieldset>
     <legend>天気</legend>
@@ -280,6 +319,14 @@ private fun renderIndex(state: DeckUiState): String {
     <legend>アラーム（毎日）</legend>
     <label><span>使う</span><input type="checkbox" name="alarmEnabled" ${if (s.alarmEnabled) "checked" else ""}></label>
     <label><span>時刻</span><input type="time" name="alarmTime" value="${timeValue(s.alarmMinutes)}"></label>
+  </fieldset>
+
+  <fieldset>
+    <legend>ポモドーロの長さ</legend>
+    <label><span>作業（分）</span><input type="number" name="pomoWork" min="1" max="180" value="${s.pomodoroWorkMinutes}"></label>
+    <label><span>休憩（分）</span><input type="number" name="pomoShort" min="1" max="60" value="${s.pomodoroShortBreakMinutes}"></label>
+    <label><span>長い休憩（分）</span><input type="number" name="pomoLong" min="1" max="120" value="${s.pomodoroLongBreakMinutes}"></label>
+    <label><span>長い休憩までの回数</span><input type="number" name="pomoRounds" min="1" max="12" value="${s.pomodoroRoundsBeforeLongBreak}"></label>
   </fieldset>
 
   <fieldset>

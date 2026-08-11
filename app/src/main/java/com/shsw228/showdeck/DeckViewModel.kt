@@ -16,6 +16,8 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -109,6 +111,23 @@ class DeckViewModel(
         publishAlertState()
     }
 
+    fun startPomodoro() {
+        scheduler.startPomodoro(_uiState.value.settings.pomodoroConfig, clock())
+        publishAlertState()
+    }
+
+    fun stopPomodoro() {
+        scheduler.stopPomodoro()
+        publishAlertState()
+    }
+
+    /** 端末の画面から直接いじる設定。Web を開かずに済ませたい少数だけ。 */
+    fun updateSettingsOnDevice(transform: (DeckSettings) -> DeckSettings) {
+        viewModelScope.launch {
+            settingsStore.update(transform(_uiState.value.settings))
+        }
+    }
+
     suspend fun updateSettings(settings: DeckSettings) = settingsStore.update(settings)
 
     suspend fun currentSettings(): DeckSettings = _uiState.value.settings
@@ -182,10 +201,21 @@ class DeckViewModel(
      */
     private fun enforceBacklight() {
         if (!backlight.canControl) return
+
+        // 目標が変わったら即座に反映する。押し戻しの周期だけに任せると、
+        // 操作パネルで明るさを変えても最大 15 秒効かない（実機で確認した）。
+        viewModelScope.launch {
+            uiState
+                .map { it.backlightRaw }
+                .distinctUntilChanged()
+                .collect { backlight.enforce(it) }
+        }
+
+        // 目標が変わらなくても、画面まわりのイベントで書き戻されるので押し戻す。
         viewModelScope.launch {
             while (true) {
-                backlight.enforce(_uiState.value.backlightRaw)
                 delay(BACKLIGHT_ENFORCE_INTERVAL_MS)
+                backlight.enforce(_uiState.value.backlightRaw)
             }
         }
     }
@@ -206,7 +236,14 @@ class DeckViewModel(
 
     private suspend fun tickAlerts() {
         val settings = _uiState.value.settings
-        val fired = scheduler.tick(_now.value, settings.alarmEnabled, settings.alarmMinutes)
+        val fired = scheduler.tick(
+            now = _now.value,
+            alarmEnabled = settings.alarmEnabled,
+            alarmMinutesOfDay = settings.alarmMinutes,
+            pomodoroConfig = settings.pomodoroConfig,
+        )
+        // 残り時間の表示を毎秒更新するため、鳴っていなくても状態は流す。
+        publishAlertState()
         if (!fired) return
 
         val label = scheduler.firing?.label ?: return
@@ -220,12 +257,18 @@ class DeckViewModel(
     }
 
     private fun publishAlertState() {
-        _uiState.update { it.copy(firing = scheduler.firing, timer = scheduler.timer) }
+        _uiState.update {
+            it.copy(
+                firing = scheduler.firing,
+                timer = scheduler.timer,
+                pomodoro = scheduler.pomodoro,
+            )
+        }
     }
 
     override fun onCleared() {
+        // super.onCleared() は空実装なので呼ばない（lint: EmptySuperCall）。
         alertPlayer.release()
-        super.onCleared()
     }
 
     private companion object {

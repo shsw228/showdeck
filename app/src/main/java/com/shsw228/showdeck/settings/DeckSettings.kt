@@ -1,6 +1,7 @@
 package com.shsw228.showdeck.settings
 
 import com.shsw228.showdeck.DeckConfig
+import com.shsw228.showdeck.alert.PomodoroConfig
 import com.shsw228.showdeck.system.ApiKey
 import java.time.LocalTime
 
@@ -53,7 +54,21 @@ data class DeckSettings(
     /** 毎日のアラーム。 */
     val alarmEnabled: Boolean,
     val alarmMinutes: Int,
+
+    /** ポモドーロの区間の長さ。 */
+    val pomodoroWorkMinutes: Int,
+    val pomodoroShortBreakMinutes: Int,
+    val pomodoroLongBreakMinutes: Int,
+    val pomodoroRoundsBeforeLongBreak: Int,
 ) {
+    val pomodoroConfig: PomodoroConfig
+        get() = PomodoroConfig(
+            workMinutes = pomodoroWorkMinutes,
+            shortBreakMinutes = pomodoroShortBreakMinutes,
+            longBreakMinutes = pomodoroLongBreakMinutes,
+            roundsBeforeLongBreak = pomodoroRoundsBeforeLongBreak,
+        )
+
     val nightStart: LocalTime get() = minutesToTime(nightStartMinutes)
     val nightEnd: LocalTime get() = minutesToTime(nightEndMinutes)
     val blackoutStart: LocalTime get() = minutesToTime(blackoutStartMinutes)
@@ -79,6 +94,10 @@ data class DeckSettings(
             webPassword = ApiKey(""),
             alarmEnabled = DeckConfig.ALARM_ENABLED,
             alarmMinutes = timeToMinutes(DeckConfig.ALARM_TIME),
+            pomodoroWorkMinutes = DeckConfig.POMODORO_WORK_MINUTES,
+            pomodoroShortBreakMinutes = DeckConfig.POMODORO_SHORT_BREAK_MINUTES,
+            pomodoroLongBreakMinutes = DeckConfig.POMODORO_LONG_BREAK_MINUTES,
+            pomodoroRoundsBeforeLongBreak = DeckConfig.POMODORO_ROUNDS_BEFORE_LONG_BREAK,
         )
     }
 }

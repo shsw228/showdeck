@@ -30,7 +30,7 @@ import com.shsw228.showdeck.system.lightSensorFlow
 import com.shsw228.showdeck.system.localIpAddress
 import com.shsw228.showdeck.ui.AlertOverlay
 import com.shsw228.showdeck.ui.ClockScreen
-import com.shsw228.showdeck.ui.DiagnosticsOverlay
+import com.shsw228.showdeck.ui.ControlOverlay
 import com.shsw228.showdeck.ui.ForecastOverlay
 import com.shsw228.showdeck.ui.theme.paletteFor
 import com.shsw228.showdeck.weather.WeatherRepository
@@ -40,6 +40,22 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
 private const val TAG = "ShowDeck"
+
+/**
+ * 明るさを 1 段動かす。
+ *
+ * raw 値は 1..255 だが、暗い側ほど 1 の差が体感で大きい。等差で動かすと
+ * 明るい側では変化が分からず、暗い側では一気に飛ぶ。倍率で動かして、
+ * 1 タップの体感を揃える。
+ */
+private fun stepBacklight(current: Int, delta: Int): Int {
+    val stepped = if (delta > 0) {
+        (current * 3 + 1) / 2
+    } else {
+        current * 2 / 3
+    }
+    return stepped.coerceIn(1, 255)
+}
 
 /**
  * ShowDeck の唯一の Activity。
@@ -97,8 +113,12 @@ class MainActivity : ComponentActivity() {
         val state by viewModel.uiState.collectAsStateWithLifecycle()
         val palette = paletteFor(state.mode)
 
+        // 時計へは State のまま渡し、末端でだけ読む。ここで値を取り出すと
+        // この階層が毎秒再コンポーズされる。
+        val nowState = viewModel.now.collectAsStateWithLifecycle()
+
         // どのオーバーレイを開いているかは画面だけの都合なので、ここで持つ。
-        var showDiagnostics by remember { mutableStateOf(false) }
+        var showControls by remember { mutableStateOf(false) }
         var showForecast by remember { mutableStateOf(false) }
 
         Box(
@@ -109,14 +129,15 @@ class MainActivity : ComponentActivity() {
                         // 消灯中も画面は点いたままなのでタップがそのまま届く。
                         // goToSleep していたらここには来ない。
                         onTap = { viewModel.onTap() },
-                        onLongPress = { showDiagnostics = true },
+                        onLongPress = { showControls = true },
                     )
                 },
         ) {
             ClockScreen(
-                nowState = viewModel.now.collectAsStateWithLifecycle(),
+                nowState = nowState,
                 palette = palette,
                 weather = state.weather,
+                pomodoro = state.pomodoro,
                 onWeatherClick = { showForecast = true },
             )
 
@@ -125,23 +146,45 @@ class MainActivity : ComponentActivity() {
                     ForecastOverlay(
                         weather = snapshot,
                         palette = palette,
-                        today = viewModel.now.value.toLocalDate(),
+                        today = nowState.value.toLocalDate(),
                         onDismiss = { showForecast = false },
                     )
                 }
             }
 
-            state.capabilities?.let { caps ->
-                if (showDiagnostics) {
-                    DiagnosticsOverlay(
-                        capabilities = caps,
-                        ipAddress = state.ipAddress,
-                        webPort = DeckConfig.WEB_PORT,
-                        webUser = WebAuth.USER,
-                        webPassword = state.settings.webPassword.value,
-                        onDismiss = { showDiagnostics = false },
-                    )
-                }
+            if (showControls) {
+                ControlOverlay(
+                    state = state,
+                    webUser = WebAuth.USER,
+                    webPort = DeckConfig.WEB_PORT,
+                    // 明るさは押した瞬間に効いてほしいので、いま効いている側だけを動かす。
+                    onAdjustBrightness = { delta ->
+                        viewModel.updateSettingsOnDevice { settings ->
+                            if (state.mode == DeckMode.DAY) {
+                                settings.copy(
+                                    dayBacklight = stepBacklight(settings.dayBacklight, delta),
+                                )
+                            } else {
+                                settings.copy(
+                                    nightBacklight = stepBacklight(settings.nightBacklight, delta),
+                                )
+                            }
+                        }
+                    },
+                    onToggleBlackout = {
+                        viewModel.updateSettingsOnDevice {
+                            it.copy(blackoutEnabled = !it.blackoutEnabled)
+                        }
+                    },
+                    onToggleAlarm = {
+                        viewModel.updateSettingsOnDevice {
+                            it.copy(alarmEnabled = !it.alarmEnabled)
+                        }
+                    },
+                    onStartPomodoro = { viewModel.startPomodoro() },
+                    onStopPomodoro = { viewModel.stopPomodoro() },
+                    onDismiss = { showControls = false },
+                )
             }
 
             // 発報中はすべての上に出す。診断や予報より優先度が高い。

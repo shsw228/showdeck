@@ -33,6 +33,7 @@ import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
 import com.shsw228.showdeck.DeckConfig
+import com.shsw228.showdeck.alert.PomodoroState
 import com.shsw228.showdeck.ui.theme.DeckPalette
 import com.shsw228.showdeck.weather.WeatherSnapshot
 import java.time.LocalDateTime
@@ -55,6 +56,7 @@ fun ClockScreen(
     nowState: State<LocalDateTime>,
     palette: DeckPalette,
     weather: WeatherSnapshot?,
+    pomodoro: PomodoroState?,
     onWeatherClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -94,6 +96,8 @@ fun ClockScreen(
                 nowState = nowState,
                 palette = palette,
                 fontSize = clockSize,
+                pomodoro = pomodoro,
+                pomodoroSize = bodySize,
                 modifier = Modifier.weight(if (palette.minimal) 1f else 1.85f),
             )
 
@@ -131,6 +135,8 @@ private fun ClockPane(
     nowState: State<LocalDateTime>,
     palette: DeckPalette,
     fontSize: TextUnit,
+    pomodoro: PomodoroState?,
+    pomodoroSize: TextUnit,
     modifier: Modifier = Modifier,
 ) {
     // derivedStateOf を挟むことで、文字列が変わる毎分だけ再コンポーズされる。
@@ -154,6 +160,24 @@ private fun ClockPane(
         )
         Spacer(Modifier.height(8.dp))
         SecondsBar(nowState = nowState, palette = palette)
+
+        // ポモドーロ中だけ時計の下に出す。動いていることが部屋の向こうから
+        // 分かればよいので、区間名と残り時間の 1 行に留める。
+        if (pomodoro != null) {
+            Spacer(Modifier.height(10.dp))
+            val remaining by remember(nowState, pomodoro) {
+                derivedStateOf { pomodoro.remainingText(nowState.value) }
+            }
+            BasicText(
+                text = "${pomodoro.phase.label} ${pomodoro.round}  $remaining",
+                style = TextStyle(
+                    color = palette.secondary,
+                    fontSize = pomodoroSize,
+                    fontFeatureSettings = TABULAR_FIGURES,
+                ),
+                softWrap = false,
+            )
+        }
     }
 }
 

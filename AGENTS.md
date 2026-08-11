@@ -52,6 +52,18 @@ Android 化した Echo Show 5 第2世代（`cronos`）向けの常駐ダッシ�
 - **Web 設定画面の経路を増やしたら認証を通すこと。** 認証は `serve()` の先頭で一括して行っている。パスごとに書く形にしない
 - **`hidden_api_policy` を緩めない。** 端末上の全アプリの制限まで下がる。ShowDeck はリフレクションを使っていない
 
+## アーキテクチャ
+
+Android の推奨アーキテクチャに沿っている。UI 層（Compose + `DeckViewModel`）とデータ層
+（`SettingsStore` / `WeatherRepository`）の 2 層。
+
+- **状態と処理は `DeckViewModel` に置く。** Activity は UI のホストと Context 依存の生成だけ。以前は Activity に `LaunchedEffect` が 11 個並んでいた
+- **`DeckViewModel` に `Context` を持たせない。** Context が要るものは Activity 側で作って渡す。実機なしで組み立てられる状態を保つ
+- **現在時刻は `uiState` に混ぜない。** 毎秒変わるものを入れると、状態を読む階層が丸ごと毎秒再コンポーズされる。`DeckViewModel.now` という別の流れにしてある
+- **グローバルな可変シングルトンを作らない。** 状態の持ち主が画面と二重になる（`AlertCenter` でやって作り直した）
+- **Hilt は入れていない。** 依存は ViewModel の 5 つだけで、注入器を足す利点より 1GB 機での依存とビルド時間の増加が勝る。増えてきたら再考する
+- ドメイン層も置いていない。公式でも optional で、ViewModel をまたぐ業務ロジックが無い
+
 ## 設定の書き込み
 
 - **`SettingsStore.update()` に画面側の `DeckSettings` をそのまま渡すときは、DataStore の最初の値が届いているか確かめる。** 届く前は既定値なので、丸ごと書き戻すと API キーも地点も既定に潰れる（実際に API キーを消した）

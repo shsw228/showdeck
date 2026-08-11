@@ -1,6 +1,7 @@
 package com.shsw228.showdeck
 
 import com.shsw228.showdeck.alert.FiringAlert
+import com.shsw228.showdeck.alert.PomodoroState
 import com.shsw228.showdeck.alert.RunningTimer
 import com.shsw228.showdeck.settings.DeckSettings
 import com.shsw228.showdeck.system.DeviceSetup
@@ -22,6 +23,7 @@ data class DeckUiState(
     val luxReading: Float? = null,
     val firing: FiringAlert? = null,
     val timer: RunningTimer? = null,
+    val pomodoro: PomodoroState? = null,
 ) {
     /** そのモードで sysfs に書くべきバックライトの raw 値。 */
     val backlightRaw: Int get() = backlightFor(mode, settings)

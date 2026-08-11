@@ -46,6 +46,10 @@ class SettingsStore(private val context: Context) {
             prefs[WEB_PASSWORD] = Secrets.encrypt(settings.webPassword.value)
             prefs[ALARM_ENABLED] = settings.alarmEnabled
             prefs[ALARM_MINUTES] = settings.alarmMinutes
+            prefs[POMODORO_WORK] = settings.pomodoroWorkMinutes
+            prefs[POMODORO_SHORT] = settings.pomodoroShortBreakMinutes
+            prefs[POMODORO_LONG] = settings.pomodoroLongBreakMinutes
+            prefs[POMODORO_ROUNDS] = settings.pomodoroRoundsBeforeLongBreak
         }
     }
 
@@ -87,6 +91,14 @@ class SettingsStore(private val context: Context) {
             webPassword = ApiKey(Secrets.decrypt(this[WEB_PASSWORD].orEmpty())),
             alarmEnabled = this[ALARM_ENABLED] ?: d.alarmEnabled,
             alarmMinutes = (this[ALARM_MINUTES] ?: d.alarmMinutes).coerceIn(0, 1439),
+            // 0 分の区間を作ると毎秒鳴り続けるので、下限を 1 で押さえる。
+            pomodoroWorkMinutes = (this[POMODORO_WORK] ?: d.pomodoroWorkMinutes).coerceIn(1, 180),
+            pomodoroShortBreakMinutes =
+                (this[POMODORO_SHORT] ?: d.pomodoroShortBreakMinutes).coerceIn(1, 60),
+            pomodoroLongBreakMinutes =
+                (this[POMODORO_LONG] ?: d.pomodoroLongBreakMinutes).coerceIn(1, 120),
+            pomodoroRoundsBeforeLongBreak =
+                (this[POMODORO_ROUNDS] ?: d.pomodoroRoundsBeforeLongBreak).coerceIn(1, 12),
         )
     }
 
@@ -108,5 +120,9 @@ class SettingsStore(private val context: Context) {
         val WEB_PASSWORD = stringPreferencesKey("web_password")
         val ALARM_ENABLED = booleanPreferencesKey("alarm_enabled")
         val ALARM_MINUTES = intPreferencesKey("alarm_minutes")
+        val POMODORO_WORK = intPreferencesKey("pomodoro_work")
+        val POMODORO_SHORT = intPreferencesKey("pomodoro_short")
+        val POMODORO_LONG = intPreferencesKey("pomodoro_long")
+        val POMODORO_ROUNDS = intPreferencesKey("pomodoro_rounds")
     }
 }
