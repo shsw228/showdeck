@@ -9,7 +9,8 @@ import com.shsw228.showdeck.settings.timeToMinutes
 import com.shsw228.showdeck.system.Backlight
 import com.shsw228.showdeck.alert.AlertCenter
 import com.shsw228.showdeck.system.DeviceSetup
-import com.shsw228.showdeck.weather.TodayWeather
+import com.shsw228.showdeck.system.ApiKey
+import com.shsw228.showdeck.weather.WeatherSnapshot
 import fi.iki.elonen.NanoHTTPD
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
@@ -35,7 +36,7 @@ class WebCtlServer(
         val ipAddress: String?,
         val capabilities: DeviceSetup.Capabilities?,
         val lux: Float?,
-        val weather: TodayWeather?,
+        val weather: WeatherSnapshot?,
     )
 
     override fun serve(session: IHTTPSession): Response = runCatching {
@@ -77,8 +78,13 @@ class WebCtlServer(
             wakeSeconds = params.int("wakeSeconds", current.wakeSeconds).coerceIn(5, 300),
             wakeOnLight = params.containsKey("wakeOnLight"),
             wakeLuxThreshold = params.int("wakeLux", current.wakeLuxThreshold).coerceIn(1, 1000),
-            weatherAreaCode = params["weatherArea"]?.trim()?.takeIf { it.isNotBlank() }
-                ?: current.weatherAreaCode,
+            weatherLat = params.double("weatherLat", current.weatherLat).coerceIn(-90.0, 90.0),
+            weatherLon = params.double("weatherLon", current.weatherLon).coerceIn(-180.0, 180.0),
+            placeName = params["placeName"]?.trim() ?: current.placeName,
+            // 空で送られたら現状維持。画面には伏せ字しか出していないので、
+            // 他の設定を保存するたびに鍵が消えては困る。
+            owmApiKey = params["owmApiKey"]?.trim()?.takeIf { it.isNotBlank() }
+                ?.let { ApiKey(it) } ?: current.owmApiKey,
             alarmEnabled = params.containsKey("alarmEnabled"),
             alarmMinutes = params.timeMinutes("alarmTime", current.alarmMinutes),
         )
@@ -128,6 +134,9 @@ class WebCtlServer(
     private fun Map<String, String>.int(key: String, fallback: Int): Int =
         this[key]?.trim()?.toIntOrNull() ?: fallback
 
+    private fun Map<String, String>.double(key: String, fallback: Double): Double =
+        this[key]?.trim()?.toDoubleOrNull() ?: fallback
+
     /** `<input type="time">` は "HH:mm" を返す。 */
     private fun Map<String, String>.timeMinutes(key: String, fallback: Int): Int =
         this[key]?.trim()?.runCatching { timeToMinutes(LocalTime.parse(this)) }?.getOrNull()
@@ -157,15 +166,19 @@ private fun renderIndex(s: DeckSettings, status: WebCtlServer.Status): String {
 
     val weatherStatus = status.weather?.let {
         buildString {
-            append(it.areaName)
+            append(it.placeName.ifBlank { "地名不明" })
             append(" / ")
             append(it.description.ifBlank { "—" })
-            val day = if (it.tempsAreTomorrow) "明日" else "今日"
-            it.highC?.let { high -> append(" / $day 最高 ${high}°") }
-            it.lowC?.let { low -> append(" 最低 ${low}°") }
-            it.popPercent?.let { pop -> append(" / 降水 ${pop}%") }
+            it.currentC?.let { current -> append(" / 現在 $current°") }
+            it.highC?.let { high -> append(" / 24h ↑$high°") }
+            it.lowC?.let { low -> append(" ↓$low°") }
+            it.popPercent?.let { pop -> append(" / 降水 $pop%") }
         }
-    } ?: "まだ取得できていません（通信が復旧すると 30 分以内に入ります）"
+    } ?: if (s.owmApiKey.isSet) {
+        "まだ取得できていません（通信が復旧すると 30 分以内に入ります）"
+    } else {
+        "API キーが未設定です"
+    }
 
     val caps = status.capabilities
     val capsRows = if (caps == null) {
@@ -245,9 +258,12 @@ private fun renderIndex(s: DeckSettings, status: WebCtlServer.Status): String {
   <fieldset>
     <legend>天気</legend>
     <p class="sub">$weatherStatus</p>
-    <label><span>気象庁の地域コード</span><input type="text" name="weatherArea" value="${s.weatherAreaCode}"></label>
-    <p class="hint">130000=東京都 / 270000=大阪府 / 200000=長野県 / 400000=福岡県 / 016000=石狩地方。
-       一覧は気象庁の area.json にある。</p>
+    <label><span>地名（画面に出す）</span><input type="text" name="placeName" value="${s.placeName}"></label>
+    <label><span>緯度</span><input type="text" name="weatherLat" value="${s.weatherLat}"></label>
+    <label><span>経度</span><input type="text" name="weatherLon" value="${s.weatherLon}"></label>
+    <label><span>API キー</span><input type="password" name="owmApiKey" placeholder="${if (s.owmApiKey.isSet) "設定済み（変えるときだけ入力）" else "未設定"}"></label>
+    <p class="hint">OpenWeatherMap のキーは端末内で Keystore の鍵により暗号化して保存する。
+       リポジトリにも APK にも入らない。空のまま保存すれば現在のキーを維持する。</p>
   </fieldset>
 
   <fieldset>

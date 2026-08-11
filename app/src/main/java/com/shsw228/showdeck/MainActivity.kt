@@ -34,8 +34,9 @@ import com.shsw228.showdeck.system.rememberNowState
 import com.shsw228.showdeck.ui.AlertOverlay
 import com.shsw228.showdeck.ui.ClockScreen
 import com.shsw228.showdeck.ui.DiagnosticsOverlay
+import com.shsw228.showdeck.ui.ForecastOverlay
 import com.shsw228.showdeck.ui.theme.paletteFor
-import com.shsw228.showdeck.weather.TodayWeather
+import com.shsw228.showdeck.weather.WeatherSnapshot
 import com.shsw228.showdeck.weather.WeatherRepository
 import com.shsw228.showdeck.web.WebCtlServer
 import kotlinx.coroutines.Dispatchers
@@ -156,10 +157,11 @@ class MainActivity : ComponentActivity() {
         }
 
         // 天気。取得に失敗しても時計は必ず出す方針なので、null なら欄ごと畳む。
-        var weather by remember { mutableStateOf<TodayWeather?>(null) }
-        LaunchedEffect(settings.weatherAreaCode) {
+        var weather by remember { mutableStateOf<WeatherSnapshot?>(null) }
+        var showForecast by remember { mutableStateOf(false) }
+        LaunchedEffect(settings.weatherLat, settings.weatherLon, settings.owmApiKey) {
             while (true) {
-                weather = weatherRepository.load(settings.weatherAreaCode)
+                weather = weatherRepository.load(settings)
                 delay(DeckConfig.WEATHER_REFRESH_MINUTES * 60_000L)
             }
         }
@@ -212,7 +214,21 @@ class MainActivity : ComponentActivity() {
                 nowState = nowState,
                 palette = palette,
                 weather = weather,
+                onWeatherClick = { showForecast = true },
             )
+
+            // 日ごとの予報。天気をタップしたときだけ出す。
+            // 消灯・夜間はレール自体を描いていないので、ここには来ない。
+            weather?.let { snapshot ->
+                if (showForecast && snapshot.daily.isNotEmpty()) {
+                    ForecastOverlay(
+                        weather = snapshot,
+                        palette = palette,
+                        today = nowState.value.toLocalDate(),
+                        onDismiss = { showForecast = false },
+                    )
+                }
+            }
 
             capabilities?.let { caps ->
                 if (showDiagnostics) {

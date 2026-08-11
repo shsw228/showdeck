@@ -1,6 +1,7 @@
 package com.shsw228.showdeck.settings
 
 import com.shsw228.showdeck.DeckConfig
+import com.shsw228.showdeck.system.ApiKey
 import java.time.LocalTime
 
 /**
@@ -35,8 +36,13 @@ data class DeckSettings(
     /** 復帰と判定する照度（lux）。 */
     val wakeLuxThreshold: Int,
 
-    /** 気象庁の地域コード。 */
-    val weatherAreaCode: String,
+    /** 天気を取る地点。 */
+    val weatherLat: Double,
+    val weatherLon: Double,
+    /** 画面に出す地名。空なら OpenWeatherMap が返す名前を使う。 */
+    val placeName: String,
+    /** OpenWeatherMap の API キー。端末内で暗号化して保存する。 */
+    val owmApiKey: ApiKey,
 
     /** 毎日のアラーム。 */
     val alarmEnabled: Boolean,
@@ -60,7 +66,10 @@ data class DeckSettings(
             wakeSeconds = DeckConfig.WAKE_SECONDS,
             wakeOnLight = DeckConfig.WAKE_ON_LIGHT,
             wakeLuxThreshold = DeckConfig.WAKE_LUX_THRESHOLD,
-            weatherAreaCode = DeckConfig.WEATHER_AREA_CODE,
+            weatherLat = DeckConfig.WEATHER_LAT,
+            weatherLon = DeckConfig.WEATHER_LON,
+            placeName = DeckConfig.WEATHER_PLACE_NAME,
+            owmApiKey = ApiKey(""),
             alarmEnabled = DeckConfig.ALARM_ENABLED,
             alarmMinutes = timeToMinutes(DeckConfig.ALARM_TIME),
         )

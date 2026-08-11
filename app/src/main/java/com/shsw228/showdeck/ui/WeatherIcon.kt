@@ -7,6 +7,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.unit.Dp
@@ -21,20 +22,33 @@ import com.shsw228.showdeck.weather.WeatherIconKind
  * 線画ではなく塗りにしている。実機で試したところ、円を 3 つ重ねた線画の雲は
  * 内側の弧が見えて団子にしか見えなかった。塗りなら重なりが消えて輪郭だけが残り、
  * 5.5 インチを 3m から見ても形が判別できる。
+ *
+ * @param background 三日月の欠けを描くために背景色が要る。塗りで抜くのが
+ *   いちばん簡単で、低解像度でも輪郭がぼやけない。
  */
 @Composable
 fun WeatherIcon(
     kind: WeatherIconKind,
     color: Color,
+    background: Color,
     size: Dp,
     modifier: Modifier = Modifier,
 ) {
     Canvas(modifier = modifier.size(size)) {
         when (kind) {
             WeatherIconKind.SUN -> drawSun(color, scale = 1f)
+            WeatherIconKind.MOON -> drawMoon(color, background, scale = 1f)
             WeatherIconKind.CLOUD -> drawCloud(color, centerY = 0.52f, scale = 1f)
+            WeatherIconKind.FOG -> {
+                drawCloud(color, centerY = 0.40f, scale = 0.92f)
+                drawFogLines(color)
+            }
             WeatherIconKind.SUN_CLOUD -> {
-                drawSun(color, scale = 0.58f, center = Offset(size.toPx() * 0.32f, size.toPx() * 0.30f))
+                drawSun(color, scale = 0.58f, center = Offset(this.size.width * 0.32f, this.size.height * 0.30f))
+                drawCloud(color, centerY = 0.62f, scale = 0.9f)
+            }
+            WeatherIconKind.MOON_CLOUD -> {
+                drawMoon(color, background, scale = 0.55f, center = Offset(this.size.width * 0.34f, this.size.height * 0.30f))
                 drawCloud(color, centerY = 0.62f, scale = 0.9f)
             }
             WeatherIconKind.RAIN -> {
@@ -44,6 +58,10 @@ fun WeatherIcon(
             WeatherIconKind.SNOW -> {
                 drawCloud(color, centerY = 0.40f, scale = 0.92f)
                 drawFlakes(color)
+            }
+            WeatherIconKind.THUNDER -> {
+                drawCloud(color, centerY = 0.40f, scale = 0.92f)
+                drawBolt(color)
             }
         }
     }
@@ -73,6 +91,22 @@ private fun DrawScope.drawSun(
             cap = StrokeCap.Round,
         )
     }
+}
+
+/** 円を描いて、少しずらした背景色の円で欠けさせる。 */
+private fun DrawScope.drawMoon(
+    color: Color,
+    background: Color,
+    scale: Float,
+    center: Offset = Offset(size.width / 2f, size.height / 2f),
+) {
+    val radius = size.minDimension * 0.30f * scale
+    drawCircle(color = color, radius = radius, center = center)
+    drawCircle(
+        color = background,
+        radius = radius * 0.92f,
+        center = Offset(center.x + radius * 0.52f, center.y - radius * 0.30f),
+    )
 }
 
 /**
@@ -133,5 +167,36 @@ private fun DrawScope.drawFlakes(color: Color) {
                 cap = StrokeCap.Round,
             )
         }
+    }
+}
+
+private fun DrawScope.drawBolt(color: Color) {
+    val w = size.width
+    val h = size.height
+    val path = Path().apply {
+        moveTo(w * 0.55f, h * 0.62f)
+        lineTo(w * 0.40f, h * 0.86f)
+        lineTo(w * 0.51f, h * 0.86f)
+        lineTo(w * 0.44f, h * 1.00f)
+        lineTo(w * 0.64f, h * 0.78f)
+        lineTo(w * 0.52f, h * 0.78f)
+        lineTo(w * 0.62f, h * 0.62f)
+        close()
+    }
+    drawPath(path, color)
+}
+
+private fun DrawScope.drawFogLines(color: Color) {
+    val w = size.width
+    val h = size.height
+    val stroke = w * 0.055f
+    listOf(0.70f to 0.28f, 0.82f to 0.36f, 0.94f to 0.30f).forEach { (y, left) ->
+        drawLine(
+            color = color,
+            start = Offset(w * left, h * y),
+            end = Offset(w * (left + 0.40f), h * y),
+            strokeWidth = stroke,
+            cap = StrokeCap.Round,
+        )
     }
 }

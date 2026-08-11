@@ -1,160 +1,172 @@
 package com.shsw228.showdeck.weather
 
-import org.json.JSONArray
 import org.json.JSONObject
+import java.time.Instant
 import java.time.LocalDate
-import java.time.OffsetDateTime
+import java.time.ZoneId
 
-/** 5.5 インチ・視距離 3m で見分けがつく粒度まで落とした天気の種類。 */
-enum class WeatherIconKind { SUN, SUN_CLOUD, CLOUD, RAIN, SNOW }
+/**
+ * 5.5 インチ・視距離 3m で見分けがつく粒度まで落とした天気の種類。
+ * 夜は太陽ではなく月にする。寝室に置く時計で昼のアイコンが光っていると違和感がある。
+ */
+enum class WeatherIconKind { SUN, MOON, SUN_CLOUD, MOON_CLOUD, CLOUD, RAIN, SNOW, THUNDER, FOG }
 
-data class TodayWeather(
-    val areaName: String,
+/** 画面に出す天気ひとまとめ。 */
+data class WeatherSnapshot(
+    val placeName: String,
     val icon: WeatherIconKind,
-    /** 気象庁の文言そのまま。画面には出さず Web 設定画面でだけ見せる。 */
+    /** 「厚い雲」など。OpenWeatherMap の日本語表記をそのまま使う。 */
     val description: String,
+    /** 現在気温。時計に出して一番役に立つのはこれ。 */
+    val currentC: Int?,
+    /** これから 24 時間の振れ幅。特定の日を指さないので、夕方でも意味を失わない。 */
     val highC: Int?,
     val lowC: Int?,
-    /** 気温が明日のものなら true。画面に「明日」と添えるために使う。 */
-    val tempsAreTomorrow: Boolean,
+    val popPercent: Int?,
+    /** 日ごとの予報。天気をタップすると出る。 */
+    val daily: List<DailyForecast>,
+)
+
+data class DailyForecast(
+    val date: LocalDate,
+    val icon: WeatherIconKind,
+    val highC: Int?,
+    val lowC: Int?,
     val popPercent: Int?,
 )
 
-/** ある日の最低・最高。どちらも取れないことがある。 */
-internal data class DayTemps(val lowC: Int?, val highC: Int?) {
-    /**
-     * 最高と最低が同じ値なら、予報として使い物にならない。
-     *
-     * 気象庁は発表時刻を過ぎた当日の枠を実況値で埋めるため、昼以降に取ると
-     * 最高も最低も同じ数字になることがある（実際に 29/29 が出た）。
-     * それを「最高 29° 最低 29°」と出しても何の情報にもならない。
-     */
-    val isUseful: Boolean get() = lowC != null && highC != null && lowC != highC
-}
-
 /**
- * 気象庁の予報 JSON を解析する。
+ * OpenWeatherMap の応答を解析する。
  *
- * `https://www.jma.go.jp/bosai/forecast/data/forecast/{地域コード}.json`
- * API キーが要らず、国内の精度も十分なのでこれを使う。
+ * 気象庁の予報 JSON から乗り換えた。あちらには**実況が無く**、予報の当日枠は
+ * 発表時刻を過ぎると実況値で潰れて最高／最低が同じ数字になる。時計に出したいのは
+ * 何より現在気温なので、それが取れないのは致命的だった。
  *
- * 副作用を持たない純粋関数にしてあるのは、実機で通信を待たずにテストするため。
- * JSON の構造は素直ではなく、当日と週間で気温の入り方が違う（週間ブロックは
- * 翌日から始まり、当日の枠は空文字になる）。そこを間違えると気温が消える。
+ * 使うのは無料枠で叩ける 2 つ。
+ *   - `/data/2.5/weather`  現在の気温と天気
+ *   - `/data/2.5/forecast` 3 時間ごと 5 日分（最高最低・降水確率・日ごとの予報）
+ *
+ * 副作用を持たない関数にしてあるのは、実機で通信を待たずにテストするため。
  */
-object JmaParser {
+object OwmParser {
 
-    fun parse(body: String, today: LocalDate): TodayWeather? = runCatching {
-        val root = JSONArray(body)
-        val near = root.getJSONObject(0)
-        val series = near.getJSONArray("timeSeries")
+    /**
+     * @param zone 日付の区切りに使う時間帯。応答の `dt_txt` は UTC なので使えない
+     *   （JST の 15 時が `06:00` と書かれている）。必ず epoch から現地時刻へ直す。
+     */
+    fun parse(
+        currentBody: String,
+        forecastBody: String,
+        now: Instant,
+        zone: ZoneId = ZoneId.systemDefault(),
+        placeNameOverride: String = "",
+    ): WeatherSnapshot? = runCatching {
+        val current = JSONObject(currentBody)
+        val currentWeather = current.getJSONArray("weather").getJSONObject(0)
 
-        val weatherSeries = series.findSeriesWith("weatherCodes") ?: return null
-        val area = weatherSeries.getJSONArray("areas").getJSONObject(0)
-        val areaName = area.getJSONObject("area").optString("name")
+        val entries = forecastEntries(forecastBody, zone)
+        val next24h = entries.filter { it.at.isAfter(now) && it.at.isBefore(now.plusSeconds(86_400)) }
 
-        val weathers = area.optJSONArray("weathers")
-        val codes = area.optJSONArray("weatherCodes")
-        val description = weathers?.optString(0).orEmpty().replace('　', ' ').trim()
-
-        // 当日の枠が実況値で潰れていたら明日の予報に切り替える。
-        // 「今日の最高 29°／最低 29°」より「明日 28°／22°」のほうが役に立つ。
-        val todayTemps = temperature(series, today)
-        val tomorrowTemps = temperature(series, today.plusDays(1))
-        val useTomorrow = !todayTemps.isUseful && tomorrowTemps.isUseful
-        val temps = if (useTomorrow) tomorrowTemps else todayTemps
-
-        TodayWeather(
-            areaName = areaName,
-            icon = iconFor(description, codes?.optString(0)),
-            description = description,
-            highC = temps.highC,
-            lowC = temps.lowC,
-            tempsAreTomorrow = useTomorrow,
-            popPercent = todayPop(series, today),
+        WeatherSnapshot(
+            placeName = placeNameOverride.ifBlank { current.optString("name") },
+            icon = iconFor(currentWeather.optInt("id"), currentWeather.optString("icon")),
+            description = currentWeather.optString("description"),
+            currentC = current.optJSONObject("main")?.optDouble("temp")?.roundedOrNull(),
+            highC = next24h.mapNotNull { it.tempC }.maxOrNull()?.let { Math.round(it).toInt() },
+            lowC = next24h.mapNotNull { it.tempC }.minOrNull()?.let { Math.round(it).toInt() },
+            popPercent = next24h.mapNotNull { it.pop }.maxOrNull()?.let { Math.round(it * 100).toInt() },
+            daily = aggregateDaily(entries, zone),
         )
     }.getOrNull()
 
-    /**
-     * 指定日の最低・最高を拾う。
-     *
-     * 対応は時刻で決まっている。**`00:00` の枠が最低、`09:00` の枠が最高。**
-     * 配列の並び順は日によって入れ替わる（当日は 09:00 が先に来ることがある）ので、
-     * 添字でも「その日の最大・最小」でもなく、時刻で突き合わせる。
-     */
-    internal fun temperature(series: JSONArray, date: LocalDate): DayTemps {
-        val tempSeries = series.findSeriesWith("temps") ?: return DayTemps(null, null)
-        val times = tempSeries.getJSONArray("timeDefines")
-        val temps = tempSeries.getJSONArray("areas").getJSONObject(0).optJSONArray("temps")
-            ?: return DayTemps(null, null)
+    private data class Entry(
+        val at: Instant,
+        val tempC: Double?,
+        val pop: Double?,
+        val conditionId: Int,
+        val iconCode: String,
+    )
 
-        var low: Int? = null
-        var high: Int? = null
-        for (index in 0 until minOf(times.length(), temps.length())) {
-            val at = times.getString(index).toOffsetDateTimeOrNull() ?: continue
-            if (at.toLocalDate() != date) continue
-            val value = temps.optString(index).toIntOrNull() ?: continue
-            when (at.hour) {
-                MIN_ANCHOR_HOUR -> low = value
-                MAX_ANCHOR_HOUR -> high = value
-            }
+    private fun forecastEntries(body: String, zone: ZoneId): List<Entry> = runCatching {
+        val list = JSONObject(body).getJSONArray("list")
+        (0 until list.length()).map { index ->
+            val item = list.getJSONObject(index)
+            val weather = item.getJSONArray("weather").getJSONObject(0)
+            Entry(
+                at = Instant.ofEpochSecond(item.getLong("dt")),
+                tempC = item.optJSONObject("main")?.optDouble("temp"),
+                pop = if (item.has("pop")) item.optDouble("pop") else null,
+                conditionId = weather.optInt("id"),
+                iconCode = weather.optString("icon"),
+            )
         }
-        return DayTemps(lowC = low, highC = high)
-    }
-
-    /** 当日の降水確率は「傘が要るか」を知りたいだけなので、いちばん高い値を出す。 */
-    private fun todayPop(series: JSONArray, today: LocalDate): Int? {
-        val popSeries = series.findSeriesWith("pops") ?: return null
-        val times = popSeries.getJSONArray("timeDefines")
-        val pops = popSeries.getJSONArray("areas").getJSONObject(0).optJSONArray("pops")
-            ?: return null
-
-        return (0 until minOf(times.length(), pops.length()))
-            .filter { times.getString(it).toLocalDateOrNull() == today }
-            .mapNotNull { pops.optString(it).toIntOrNull() }
-            .maxOrNull()
-    }
+    }.getOrDefault(emptyList())
 
     /**
-     * 天気の文言から表示するアイコンを決める。
+     * 日ごとにまとめる。
      *
-     * 気象庁のコードは 100 種類以上あって網羅が現実的でない。文言は必ず主たる
-     * 天気から始まるので、先頭の語を見るほうが確実で読みやすい。
-     * 文言が取れなかったときだけコードの先頭桁で補う。
+     * アイコンはその日の 12 時に一番近い区間のものを使う。最も荒れた天気を選ぶと
+     * 一瞬の通り雨で一日が雨になり、逆に平均すると特徴が消える。
+     * 「日中どうなるか」を一目で示すのが目的なので昼を代表させる。
      */
-    internal fun iconFor(description: String, code: String?): WeatherIconKind {
-        val primary = description.substringBefore(' ')
-        return when {
-            primary.contains("雪") -> WeatherIconKind.SNOW
-            primary.contains("雨") -> WeatherIconKind.RAIN
-            primary.contains("晴") ->
-                if (description.contains("くもり")) WeatherIconKind.SUN_CLOUD
-                else WeatherIconKind.SUN
-            primary.contains("くもり") || primary.contains("曇") -> WeatherIconKind.CLOUD
-            else -> when (code?.firstOrNull()) {
-                '1' -> WeatherIconKind.SUN
-                '2' -> WeatherIconKind.CLOUD
-                '3' -> WeatherIconKind.RAIN
-                '4' -> WeatherIconKind.SNOW
+    private fun aggregateDaily(entries: List<Entry>, zone: ZoneId): List<DailyForecast> {
+        val byDate = entries.groupBy { it.at.atZone(zone).toLocalDate() }.toSortedMap()
+        val today = byDate.keys.firstOrNull()
+
+        return byDate
+            // 末尾の日は区間が数個しか無く、最高気温も降水確率も過小に出る
+            // （実機で最終日が午前のぶんだけ入り、降水 0% になった）。
+            // 当日は残り区間が少なくても「今日」として意味があるので残す。
+            .filterKeys { it == today || byDate.getValue(it).size >= MIN_ENTRIES_PER_DAY }
+            .toList()
+            // 列数を 5 に固定する。日によって 5 列と 6 列が入れ替わると
+            // 1 列の幅と文字の大きさまで変わって、見え方が安定しない。
+            .take(MAX_DAYS)
+            .map { (date, dayEntries) ->
+                val representative = dayEntries.minByOrNull {
+                    kotlin.math.abs(it.at.atZone(zone).hour - 12)
+                }
+                DailyForecast(
+                    date = date,
+                    icon = representative
+                        ?.let { iconFor(it.conditionId, it.iconCode) }
+                        ?: WeatherIconKind.CLOUD,
+                    highC = dayEntries.mapNotNull { it.tempC }.maxOrNull()?.let { Math.round(it).toInt() },
+                    lowC = dayEntries.mapNotNull { it.tempC }.minOrNull()?.let { Math.round(it).toInt() },
+                    popPercent = dayEntries.mapNotNull { it.pop }.maxOrNull()
+                        ?.let { Math.round(it * 100).toInt() },
+                )
+            }
+    }
+
+    /** 3 時間刻みなので、18 時間ぶんに満たない日は代表値として使わない。 */
+    private const val MIN_ENTRIES_PER_DAY = 6
+
+    /** 無料枠で確実に埋まるのは 5 日。 */
+    private const val MAX_DAYS = 5
+
+    /**
+     * 天気 ID とアイコンコードから描くアイコンを決める。
+     *
+     * ID は百の位で大分類が決まる。アイコンコードの末尾 `d`/`n` が昼夜。
+     * 晴れと晴れ間だけ夜用に差し替える。雨や雪は昼夜で見た目を変える必要がない。
+     */
+    internal fun iconFor(conditionId: Int, iconCode: String): WeatherIconKind {
+        val night = iconCode.endsWith("n")
+        return when (conditionId / 100) {
+            2 -> WeatherIconKind.THUNDER
+            3, 5 -> WeatherIconKind.RAIN
+            6 -> WeatherIconKind.SNOW
+            7 -> WeatherIconKind.FOG
+            8 -> when (conditionId) {
+                800 -> if (night) WeatherIconKind.MOON else WeatherIconKind.SUN
+                801, 802 -> if (night) WeatherIconKind.MOON_CLOUD else WeatherIconKind.SUN_CLOUD
                 else -> WeatherIconKind.CLOUD
             }
+            else -> WeatherIconKind.CLOUD
         }
     }
 
-    private fun JSONArray.findSeriesWith(key: String): JSONObject? =
-        (0 until length()).asSequence()
-            .map { getJSONObject(it) }
-            .firstOrNull { series ->
-                series.optJSONArray("areas")?.optJSONObject(0)?.has(key) == true
-            }
-
-    private fun String.toLocalDateOrNull(): LocalDate? =
-        toOffsetDateTimeOrNull()?.toLocalDate()
-
-    private fun String.toOffsetDateTimeOrNull(): OffsetDateTime? =
-        runCatching { OffsetDateTime.parse(this) }.getOrNull()
-
-    /** 気象庁は最低気温を 00:00、最高気温を 09:00 の枠に入れる。 */
-    private const val MIN_ANCHOR_HOUR = 0
-    private const val MAX_ANCHOR_HOUR = 9
+    private fun Double.roundedOrNull(): Int? =
+        if (isNaN()) null else Math.round(this).toInt()
 }

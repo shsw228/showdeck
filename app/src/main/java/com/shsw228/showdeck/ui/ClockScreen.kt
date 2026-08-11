@@ -2,6 +2,7 @@ package com.shsw228.showdeck.ui
 
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -28,27 +29,32 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
 import com.shsw228.showdeck.DeckConfig
 import com.shsw228.showdeck.ui.theme.DeckPalette
-import com.shsw228.showdeck.weather.TodayWeather
+import com.shsw228.showdeck.weather.WeatherSnapshot
 import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
 import java.util.Locale
 
 private val TIME_FORMAT: DateTimeFormatter = DateTimeFormatter.ofPattern("HH:mm", Locale.JAPAN)
-private val YEAR_FORMAT: DateTimeFormatter = DateTimeFormatter.ofPattern("yyyy", Locale.JAPAN)
 private val DATE_FORMAT: DateTimeFormatter = DateTimeFormatter.ofPattern("M月d日", Locale.JAPAN)
-private val WEEKDAY_FORMAT: DateTimeFormatter = DateTimeFormatter.ofPattern("EEEE", Locale.JAPAN)
+/**
+ * 曜日は「火」の 1 文字。
+ * 「火曜日」だと日付と同じ行に収まらず、実機で「火曜E」と切れた。
+ */
+private val WEEKDAY_FORMAT: DateTimeFormatter = DateTimeFormatter.ofPattern("E", Locale.JAPAN)
 
 /** 数字の幅を揃えて桁が踊らないようにする。大きな時計では揺れが目立つ。 */
-private const val TABULAR_FIGURES = "tnum"
+internal const val TABULAR_FIGURES = "tnum"
 
 @Composable
 fun ClockScreen(
     nowState: State<LocalDateTime>,
     palette: DeckPalette,
-    weather: TodayWeather?,
+    weather: WeatherSnapshot?,
+    onWeatherClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     BoxWithConstraints(
@@ -61,12 +67,13 @@ fun ClockScreen(
         // 端末の密度が読めないので、すべて画面高からの相対で決める。
         // 960x480 の実機でも、Mac の Preview でも同じ見た目になる。
         val clockSize = with(density) { (maxHeight * 0.42f).toSp() }
-        val railPrimarySize = with(density) { (maxHeight * 0.13f).toSp() }
-        val railSecondarySize = with(density) { (maxHeight * 0.085f).toSp() }
-        val footnoteSize = with(density) { (maxHeight * 0.05f).toSp() }
+        val dateSize = with(density) { (maxHeight * 0.115f).toSp() }
+        val tempSize = with(density) { (maxHeight * 0.125f).toSp() }
+        val bodySize = with(density) { (maxHeight * 0.062f).toSp() }
+        val footnoteSize = with(density) { (maxHeight * 0.052f).toSp() }
         val gutter = maxHeight * 0.07f
         // Row の中では BoxWithConstraints のレシーバが隠れるので、ここで確定させる。
-        val weatherIconSize = maxHeight * 0.17f
+        val iconSize = maxHeight * 0.155f
 
         val shift by remember {
             derivedStateOf { pixelShiftOffset(nowState.value) }
@@ -100,12 +107,14 @@ fun ClockScreen(
                 InfoRail(
                     nowState = nowState,
                     palette = palette,
-                    primarySize = railPrimarySize,
-                    secondarySize = railSecondarySize,
+                    dateSize = dateSize,
+                    tempSize = tempSize,
+                    bodySize = bodySize,
                     footnoteSize = footnoteSize,
-                    iconSize = weatherIconSize,
+                    iconSize = iconSize,
                     gutter = gutter,
                     weather = weather,
+                    onWeatherClick = onWeatherClick,
                     modifier = Modifier.weight(1f),
                 )
             }
@@ -117,7 +126,7 @@ fun ClockScreen(
 private fun ClockPane(
     nowState: State<LocalDateTime>,
     palette: DeckPalette,
-    fontSize: androidx.compose.ui.unit.TextUnit,
+    fontSize: TextUnit,
     modifier: Modifier = Modifier,
 ) {
     // derivedStateOf を挟むことで、文字列が変わる毎分だけ再コンポーズされる。
@@ -167,23 +176,28 @@ private fun SecondsBar(
     }
 }
 
+/**
+ * 右側の情報レール。上から日付、天気、地名。
+ *
+ * 幅は画面の 1/3 ほどしかないので、1 行あたりの文字数を抑えて折り返しを避ける。
+ * 年は出していない。時計を見て年を知りたい場面が無く、その分を天気に回した。
+ */
 @Composable
 private fun InfoRail(
     nowState: State<LocalDateTime>,
     palette: DeckPalette,
-    primarySize: androidx.compose.ui.unit.TextUnit,
-    secondarySize: androidx.compose.ui.unit.TextUnit,
-    footnoteSize: androidx.compose.ui.unit.TextUnit,
+    dateSize: TextUnit,
+    tempSize: TextUnit,
+    bodySize: TextUnit,
+    footnoteSize: TextUnit,
     iconSize: Dp,
     gutter: Dp,
-    weather: TodayWeather?,
+    weather: WeatherSnapshot?,
+    onWeatherClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val dateText by remember(nowState) {
         derivedStateOf { DATE_FORMAT.format(nowState.value) }
-    }
-    val yearText by remember(nowState) {
-        derivedStateOf { YEAR_FORMAT.format(nowState.value) }
     }
     val weekdayText by remember(nowState) {
         derivedStateOf { WEEKDAY_FORMAT.format(nowState.value) }
@@ -193,101 +207,123 @@ private fun InfoRail(
         modifier = modifier.fillMaxHeight(),
         verticalArrangement = Arrangement.Center,
     ) {
-        BasicText(
-            text = yearText,
-            style = TextStyle(
-                color = palette.tertiary,
-                fontSize = footnoteSize,
-                fontFeatureSettings = TABULAR_FIGURES,
-            ),
-        )
-        BasicText(
-            text = dateText,
-            style = TextStyle(
-                color = palette.primary,
-                fontSize = primarySize,
-                fontWeight = FontWeight.Normal,
-                fontFeatureSettings = TABULAR_FIGURES,
-            ),
-        )
-        BasicText(
-            text = weekdayText,
-            style = TextStyle(
-                color = palette.secondary,
-                fontSize = secondarySize,
-            ),
-        )
+        // 日付と曜日は同じ行に置く。別行にすると天気が入る高さが足りなくなる。
+        Row(verticalAlignment = Alignment.Bottom) {
+            BasicText(
+                text = dateText,
+                style = TextStyle(
+                    color = palette.primary,
+                    fontSize = dateSize,
+                    fontFeatureSettings = TABULAR_FIGURES,
+                ),
+                softWrap = false,
+            )
+            Spacer(Modifier.width(gutter * 0.3f))
+            BasicText(
+                text = weekdayText,
+                style = TextStyle(color = palette.secondary, fontSize = bodySize),
+                softWrap = false,
+            )
+        }
 
         if (weather != null) {
-            Spacer(Modifier.height(gutter * 0.5f))
+            Spacer(Modifier.height(gutter * 0.75f))
             WeatherBlock(
                 weather = weather,
                 palette = palette,
                 iconSize = iconSize,
-                textSize = secondarySize,
+                tempSize = tempSize,
                 footnoteSize = footnoteSize,
+                gutter = gutter,
+                onClick = onWeatherClick,
             )
         }
-
-        // 予定はこの下に積んでいく（ロードマップ 6）。
-        // IP はここには出さない。常時見えている必要がなく、必要なときは
-        // 長押しの診断オーバーレイに設定画面の URL ごと出る。
     }
 }
 
 /**
- * 天気は「アイコン・最高最低・降水確率」の 3 つだけ。
+ * 天気。現在気温を主役にする。
  *
- * 5.5 インチを 3m から見て読めるのは 3〜4 項目までなので、風速や週間予報は載せない。
- * 気象庁の文言（「雨　夕方　まで　時々　くもり」）もここには出さず、
- * Web 設定画面でだけ見せる。
+ * 気象庁の予報 JSON を使っていたときは実況が取れず、当日の最高／最低が
+ * 実況値で潰れて「29°/29°」のような無意味な表示になっていた。
+ * 時計に出して一番役に立つのは今の気温なので、それを大きく出す。
+ *
+ * 最高／最低は「これから 24 時間」の振れ幅。特定の日を指さないので、
+ * 夕方に見ても意味を失わない。矢印だけ添えて日付の説明を省いている。
  */
 @Composable
 private fun WeatherBlock(
-    weather: TodayWeather,
+    weather: WeatherSnapshot,
     palette: DeckPalette,
     iconSize: Dp,
-    textSize: androidx.compose.ui.unit.TextUnit,
-    footnoteSize: androidx.compose.ui.unit.TextUnit,
+    tempSize: TextUnit,
+    footnoteSize: TextUnit,
+    gutter: Dp,
+    onClick: () -> Unit,
 ) {
-    Row(verticalAlignment = Alignment.CenterVertically) {
-        WeatherIcon(kind = weather.icon, color = palette.primary, size = iconSize)
-        Spacer(Modifier.width(iconSize * 0.28f))
-        Column {
-            val high = weather.highC?.let { "$it°" }
-            val low = weather.lowC?.let { "$it°" }
-            if (high != null || low != null) {
-                BasicText(
-                    text = listOfNotNull(high, low).joinToString(" / "),
-                    style = TextStyle(
-                        color = palette.primary,
-                        fontSize = textSize,
-                        fontFeatureSettings = TABULAR_FIGURES,
-                    ),
-                    // 折り返すとレールの幅では 2 行になって縦に伸びる。
-                    // 気温は一行で読ませたいので折り返さない。
-                    softWrap = false,
-                )
-            }
-
-            // 「いつの気温か」と降水確率は同じ行にまとめる。
-            // 当日の枠が実況値で潰れているときは明日の予報を出しているため、
-            // どちらの日の話かが分からないと数字が信用できない。
-            val caption = listOfNotNull(
-                "明日".takeIf { weather.tempsAreTomorrow },
-                weather.popPercent?.let { "降水 $it%" },
+    Column(modifier = Modifier.clickable(onClick = onClick)) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            WeatherIcon(
+                kind = weather.icon,
+                color = palette.primary,
+                background = palette.background,
+                size = iconSize,
             )
-            if (caption.isNotEmpty()) {
-                BasicText(
-                    text = caption.joinToString(" ・ "),
-                    style = TextStyle(
-                        color = palette.secondary,
-                        fontSize = footnoteSize,
-                        fontFeatureSettings = TABULAR_FIGURES,
-                    ),
-                    softWrap = false,
+            Spacer(Modifier.width(gutter * 0.4f))
+            Column {
+                weather.currentC?.let {
+                    BasicText(
+                        text = "$it°",
+                        style = TextStyle(
+                            color = palette.primary,
+                            fontSize = tempSize,
+                            fontFeatureSettings = TABULAR_FIGURES,
+                        ),
+                        softWrap = false,
+                    )
+                }
+                val range = listOfNotNull(
+                    weather.highC?.let { "↑$it°" },
+                    weather.lowC?.let { "↓$it°" },
                 )
+                if (range.isNotEmpty()) {
+                    BasicText(
+                        text = range.joinToString(" "),
+                        style = TextStyle(
+                            color = palette.secondary,
+                            fontSize = footnoteSize,
+                            fontFeatureSettings = TABULAR_FIGURES,
+                        ),
+                        softWrap = false,
+                    )
+                }
             }
+        }
+
+        Spacer(Modifier.height(gutter * 0.3f))
+
+        // 地名と天気の文言は同じ行。どこの天気か分からないと数字が信用できない。
+        val caption = listOfNotNull(
+            weather.placeName.takeIf { it.isNotBlank() },
+            weather.description.takeIf { it.isNotBlank() },
+        ).joinToString(" ")
+        if (caption.isNotEmpty()) {
+            BasicText(
+                text = caption,
+                style = TextStyle(color = palette.secondary, fontSize = footnoteSize),
+                softWrap = false,
+            )
+        }
+        weather.popPercent?.let {
+            BasicText(
+                text = "降水 $it%",
+                style = TextStyle(
+                    color = palette.tertiary,
+                    fontSize = footnoteSize,
+                    fontFeatureSettings = TABULAR_FIGURES,
+                ),
+                softWrap = false,
+            )
         }
     }
 }

@@ -54,12 +54,17 @@ object DeckConfig {
     const val PIXEL_SHIFT_RANGE_DP = 6
 
     /**
-     * 気象庁の地域コード。130000=東京都 / 270000=大阪府 / 200000=長野県 /
-     * 016000=石狩地方 / 400000=福岡県。Web 設定画面から変更できる。
+     * 天気を取る地点。既定は埼玉県和光市。
+     * Web 設定画面から変更できる。座標は OpenWeatherMap のジオコーディングで引いた値。
      */
-    const val WEATHER_AREA_CODE = "130000"
+    const val WEATHER_LAT = 35.7817
+    const val WEATHER_LON = 139.6059
+    const val WEATHER_PLACE_NAME = "和光市"
 
-    /** 天気の取得間隔。気象庁の更新は 1 日数回なのでこれで十分。 */
+    /**
+     * 天気の取得間隔。
+     * OpenWeatherMap の無料枠は 60 回/分なので 30 分ごとでも余裕がある。
+     */
     const val WEATHER_REFRESH_MINUTES = 30
 
     /** 毎日のアラーム。既定は無効。 */

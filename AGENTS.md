@@ -42,6 +42,13 @@ Android 化した Echo Show 5 第2世代（`cronos`）向けの常駐ダッシ�
 - **外部データは「取れた」だけでは信用しない。** 気象庁は発表時刻を過ぎた当日の枠を実況値で埋めるため、最高と最低が同じ値になる。値が意味を持つかを検査してから画面に出す
 - 解析は副作用のない関数に切り出し、実際の応答を `app/src/test/resources/` に置いてテストする
 - **Android の `org.json` はユニットテストではスタブ**で、呼ぶと例外になる。`testImplementation(libs.json)` で実装を載せてある
+- **時刻を含む応答は必ず epoch から現地時刻へ直す。** OpenWeatherMap の `dt_txt` は UTC で、そのまま使うと JST の夕方が前日に寄る
+
+## 秘密の扱い
+
+- API キーの類は**リポジトリにも APK にも入れない。** Web 設定画面から入れ、`Secrets` で暗号化して DataStore に置く
+- 秘密は `ApiKey` のような `toString()` を潰した型で包む。`DeckSettings` はまるごとログに出しており、素の `String` で持つと `/logs` から平文が読める
+- 設定画面に既存の値を書き戻さない。伏せ字を出し、空なら現状維持にする
 
 ## Build, Test, and Development Commands
 
