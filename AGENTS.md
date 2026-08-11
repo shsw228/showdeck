@@ -66,6 +66,36 @@ Android 化した Echo Show 5 第2世代（`cronos`）向けの常駐ダッシ�
 - **デザインから写すのは構造と階層であって寸法ではない。** `claude.ai/design` のプロジェクトは 960×480 の**画素**で描かれている。dp キャンバスは 788×394 なので、そのまま dp にすると溢れる。4dp グリッドに載せ直し、見分けのつかない段は畳む（数字の 7 段 → 3 段）
 - **アイコンは自前で描かない。** `material-icons-extended` から `ImageVector` だけ借りて foundation の `Image` に渡す（material ランタイムは入らない）。R8 が未使用ぶんを落とすので APK 増分は小さい。なお `Foggy` `PartlyCloudyDay` などの Material Symbols 名は旧セットに無い
 
+## 端末を調べるとき
+
+**「出力が空だった」を「機能が無い」と書かない。** 空振りは、機能の不在・測り方の誤り・
+別の原因で無効、のどれでも起きる。実際に「ナビバーも音量パネルもこの ROM には無い」と
+断定したが、原因は `SystemUI` が `DISABLED_USER` で残っていただけだった。
+
+- **観測と解釈を分けて書く。** 「`grep` が 0 件」と「機能が無い」は別の文
+- **矛盾する観測が出たら、両方を並べて報告する。** 都合のいい方を選ばない。
+  `pidof` が返るのに `pm list packages -d` に載る、は両立する
+  （`SystemUI` は `system_server` が起動するので、無効でもプロセスは動く）
+- **自分が変えた状態を数えておく。** 切り分け中に `am crash` や `cmd overlay` を
+  打ったら、そのあとの計測は「素の状態」ではない。戻すか、再起動してから測る
+- **自分のアプリが前面のまま「端末の素の挙動」を測らない。** 没入モードや
+  Device Owner のポリシーが効いている
+- **無効化パッケージは `enabled=` の数値で見る。** `pm enable` は成功と表示しても
+  状態が戻らないことがある（`enabled=3` = `DISABLED_USER`）。`pm default-state` を使い、
+  **`package-restrictions.xml` の書き出しは遅延するので 30 秒以上待ってから再起動する。**
+  直後に reboot すると変更が落ちる
+
+## SystemUI は止めない
+
+止めれば PSS 25MB ぶん空くが、次を失う。
+
+- ジェスチャーの戻る（`NavigationBar` 内の `EdgeBackGestureHandler`）
+- 音量パネル
+- 電源長押しメニュー
+
+この端末に物理の戻るキーは無く、設定画面に入ったら戻れなくなる。25MB のために
+買う損ではない。`setStatusBarDisabled` も呼ばない（バーは没入モードで隠す）。
+
 ## UI を変えたら
 
 **`./gradlew :app:updateDebugScreenshotTest` で参照画像を撮り直し、差分を目で見る。**
