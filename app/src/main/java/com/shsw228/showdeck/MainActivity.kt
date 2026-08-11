@@ -212,7 +212,6 @@ class MainActivity : ComponentActivity() {
                 nowState = nowState,
                 palette = palette,
                 weather = weather,
-                ipAddress = ipAddress,
             )
 
             capabilities?.let { caps ->

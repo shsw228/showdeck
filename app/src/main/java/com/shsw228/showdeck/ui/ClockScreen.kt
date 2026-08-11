@@ -49,7 +49,6 @@ fun ClockScreen(
     nowState: State<LocalDateTime>,
     palette: DeckPalette,
     weather: TodayWeather?,
-    ipAddress: String?,
     modifier: Modifier = Modifier,
 ) {
     BoxWithConstraints(
@@ -107,7 +106,6 @@ fun ClockScreen(
                     iconSize = weatherIconSize,
                     gutter = gutter,
                     weather = weather,
-                    ipAddress = ipAddress,
                     modifier = Modifier.weight(1f),
                 )
             }
@@ -179,7 +177,6 @@ private fun InfoRail(
     iconSize: Dp,
     gutter: Dp,
     weather: TodayWeather?,
-    ipAddress: String?,
     modifier: Modifier = Modifier,
 ) {
     val dateText by remember(nowState) {
@@ -232,20 +229,9 @@ private fun InfoRail(
             )
         }
 
-        Spacer(Modifier.weight(1f))
-
         // 予定はこの下に積んでいく（ロードマップ 6）。
-        // IP を出しておくと adb connect と Web 設定画面を開くのが楽になる。
-        if (ipAddress != null) {
-            BasicText(
-                text = ipAddress,
-                style = TextStyle(
-                    color = palette.tertiary,
-                    fontSize = footnoteSize,
-                    fontFeatureSettings = TABULAR_FIGURES,
-                ),
-            )
-        }
+        // IP はここには出さない。常時見えている必要がなく、必要なときは
+        // 長押しの診断オーバーレイに設定画面の URL ごと出る。
     }
 }
 
@@ -278,16 +264,28 @@ private fun WeatherBlock(
                         fontSize = textSize,
                         fontFeatureSettings = TABULAR_FIGURES,
                     ),
+                    // 折り返すとレールの幅では 2 行になって縦に伸びる。
+                    // 気温は一行で読ませたいので折り返さない。
+                    softWrap = false,
                 )
             }
-            weather.popPercent?.let {
+
+            // 「いつの気温か」と降水確率は同じ行にまとめる。
+            // 当日の枠が実況値で潰れているときは明日の予報を出しているため、
+            // どちらの日の話かが分からないと数字が信用できない。
+            val caption = listOfNotNull(
+                "明日".takeIf { weather.tempsAreTomorrow },
+                weather.popPercent?.let { "降水 $it%" },
+            )
+            if (caption.isNotEmpty()) {
                 BasicText(
-                    text = "降水 $it%",
+                    text = caption.joinToString(" ・ "),
                     style = TextStyle(
                         color = palette.secondary,
                         fontSize = footnoteSize,
                         fontFeatureSettings = TABULAR_FIGURES,
                     ),
+                    softWrap = false,
                 )
             }
         }

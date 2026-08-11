@@ -160,7 +160,8 @@ private fun renderIndex(s: DeckSettings, status: WebCtlServer.Status): String {
             append(it.areaName)
             append(" / ")
             append(it.description.ifBlank { "—" })
-            it.highC?.let { high -> append(" / 最高 ${high}°") }
+            val day = if (it.tempsAreTomorrow) "明日" else "今日"
+            it.highC?.let { high -> append(" / $day 最高 ${high}°") }
             it.lowC?.let { low -> append(" 最低 ${low}°") }
             it.popPercent?.let { pop -> append(" / 降水 ${pop}%") }
         }

@@ -15,8 +15,22 @@ data class TodayWeather(
     val description: String,
     val highC: Int?,
     val lowC: Int?,
+    /** 気温が明日のものなら true。画面に「明日」と添えるために使う。 */
+    val tempsAreTomorrow: Boolean,
     val popPercent: Int?,
 )
+
+/** ある日の最低・最高。どちらも取れないことがある。 */
+internal data class DayTemps(val lowC: Int?, val highC: Int?) {
+    /**
+     * 最高と最低が同じ値なら、予報として使い物にならない。
+     *
+     * 気象庁は発表時刻を過ぎた当日の枠を実況値で埋めるため、昼以降に取ると
+     * 最高も最低も同じ数字になることがある（実際に 29/29 が出た）。
+     * それを「最高 29° 最低 29°」と出しても何の情報にもならない。
+     */
+    val isUseful: Boolean get() = lowC != null && highC != null && lowC != highC
+}
 
 /**
  * 気象庁の予報 JSON を解析する。
@@ -43,35 +57,49 @@ object JmaParser {
         val codes = area.optJSONArray("weatherCodes")
         val description = weathers?.optString(0).orEmpty().replace('　', ' ').trim()
 
+        // 当日の枠が実況値で潰れていたら明日の予報に切り替える。
+        // 「今日の最高 29°／最低 29°」より「明日 28°／22°」のほうが役に立つ。
+        val todayTemps = temperature(series, today)
+        val tomorrowTemps = temperature(series, today.plusDays(1))
+        val useTomorrow = !todayTemps.isUseful && tomorrowTemps.isUseful
+        val temps = if (useTomorrow) tomorrowTemps else todayTemps
+
         TodayWeather(
             areaName = areaName,
             icon = iconFor(description, codes?.optString(0)),
             description = description,
-            highC = temperature(series, today, wantMax = true),
-            lowC = temperature(series, today, wantMax = false),
+            highC = temps.highC,
+            lowC = temps.lowC,
+            tempsAreTomorrow = useTomorrow,
             popPercent = todayPop(series, today),
         )
     }.getOrNull()
 
     /**
-     * 当日の気温を拾う。
+     * 指定日の最低・最高を拾う。
      *
-     * `timeDefines` と `temps` の対応は発表時刻で変わる（朝の発表だと先頭が
-     * 09:00 の実況になる）ため、日付が今日の要素だけを集めて最大・最小を取る。
-     * 添字を決め打ちにすると発表時刻によって値がずれる。
+     * 対応は時刻で決まっている。**`00:00` の枠が最低、`09:00` の枠が最高。**
+     * 配列の並び順は日によって入れ替わる（当日は 09:00 が先に来ることがある）ので、
+     * 添字でも「その日の最大・最小」でもなく、時刻で突き合わせる。
      */
-    private fun temperature(series: JSONArray, today: LocalDate, wantMax: Boolean): Int? {
-        val tempSeries = series.findSeriesWith("temps") ?: return null
+    internal fun temperature(series: JSONArray, date: LocalDate): DayTemps {
+        val tempSeries = series.findSeriesWith("temps") ?: return DayTemps(null, null)
         val times = tempSeries.getJSONArray("timeDefines")
         val temps = tempSeries.getJSONArray("areas").getJSONObject(0).optJSONArray("temps")
-            ?: return null
+            ?: return DayTemps(null, null)
 
-        val todayValues = (0 until minOf(times.length(), temps.length()))
-            .filter { times.getString(it).toLocalDateOrNull() == today }
-            .mapNotNull { temps.optString(it).toIntOrNull() }
-
-        if (todayValues.isEmpty()) return null
-        return if (wantMax) todayValues.max() else todayValues.min()
+        var low: Int? = null
+        var high: Int? = null
+        for (index in 0 until minOf(times.length(), temps.length())) {
+            val at = times.getString(index).toOffsetDateTimeOrNull() ?: continue
+            if (at.toLocalDate() != date) continue
+            val value = temps.optString(index).toIntOrNull() ?: continue
+            when (at.hour) {
+                MIN_ANCHOR_HOUR -> low = value
+                MAX_ANCHOR_HOUR -> high = value
+            }
+        }
+        return DayTemps(lowC = low, highC = high)
     }
 
     /** 当日の降水確率は「傘が要るか」を知りたいだけなので、いちばん高い値を出す。 */
@@ -121,5 +149,12 @@ object JmaParser {
             }
 
     private fun String.toLocalDateOrNull(): LocalDate? =
-        runCatching { OffsetDateTime.parse(this).toLocalDate() }.getOrNull()
+        toOffsetDateTimeOrNull()?.toLocalDate()
+
+    private fun String.toOffsetDateTimeOrNull(): OffsetDateTime? =
+        runCatching { OffsetDateTime.parse(this) }.getOrNull()
+
+    /** 気象庁は最低気温を 00:00、最高気温を 09:00 の枠に入れる。 */
+    private const val MIN_ANCHOR_HOUR = 0
+    private const val MAX_ANCHOR_HOUR = 9
 }

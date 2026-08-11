@@ -1,6 +1,8 @@
 package com.shsw228.showdeck.weather
 
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertTrue
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
 import org.junit.Test
@@ -29,12 +31,33 @@ class JmaParserTest {
 
         assertEquals("東京地方", weather.areaName)
         assertEquals(WeatherIconKind.RAIN, weather.icon)
-        // temps は当日ぶんが 29 と 29。週間ブロックは翌日からなので混ぜてはいけない。
-        assertEquals(29, weather.highC)
-        assertEquals(29, weather.lowC)
+
+        // 当日の枠は 09:00→29 / 00:00→29 と潰れている。発表時刻を過ぎた枠は
+        // 実況値で埋まるためで、これを「最高 29° 最低 29°」と出しても意味がない。
+        // そういう日は明日の予報（00:00→22 / 09:00→28）に切り替える。
+        assertTrue(weather.tempsAreTomorrow)
+        assertEquals(28, weather.highC)
+        assertEquals(22, weather.lowC)
         // pops は 50/80/90/70 だが、当日ぶんは先頭 2 つ（12 時と 18 時）だけ。
         // 90 は翌日の値なので混ぜてはいけない。傘が要るかを知りたいので当日の最大を出す。
         assertEquals(80, weather.popPercent)
+    }
+
+    @Test
+    fun `気温は時刻の枠で決まり、並び順に依存しない`() {
+        // 00:00 が最低、09:00 が最高。資料では当日だけ 09:00 が先に来る。
+        // 添字や「その日の最大・最小」で拾うと、この入れ替わりで値がずれる。
+        val series = org.json.JSONArray(body).getJSONObject(0).getJSONArray("timeSeries")
+
+        val today = JmaParser.temperature(series, reportDate)
+        assertEquals(29, today.lowC)
+        assertEquals(29, today.highC)
+        assertFalse(today.isUseful)
+
+        val tomorrow = JmaParser.temperature(series, reportDate.plusDays(1))
+        assertEquals(22, tomorrow.lowC)
+        assertEquals(28, tomorrow.highC)
+        assertTrue(tomorrow.isUseful)
     }
 
     @Test
