@@ -92,7 +92,6 @@ class DeckViewModel(
     val canControlBacklight: Boolean get() = backlight.canControl
 
     init {
-        _uiState.update { it.copy(hasVibrator = alertPlayer.hasVibrator) }
         observeSettings()
         startClock()
         applyDeviceSetup()
@@ -390,7 +389,7 @@ class DeckViewModel(
         wakeUntil = clock().plusMinutes(ALERT_WAKE_MINUTES)
         recomputeMode()
         backlight.enforce(settings.dayBacklight)
-        alertPlayer.fire(label, settings.alertHapticOnly)
+        alertPlayer.fire(label, settings.alertSilent)
         publishAlertState()
     }
 

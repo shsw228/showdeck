@@ -35,9 +35,6 @@
     <!-- 天気の地点を現在地から取る。system UID なのでインストール時に付く。 -->
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
 
-    <!-- 発報の振動。マナーモード時は音の代わりにこれだけ出す。 -->
-    <uses-permission android:name="android.permission.VIBRATE" />
-
     <application
         android:allowBackup="false"
         android:icon="@drawable/ic_showdeck"

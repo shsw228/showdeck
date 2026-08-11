@@ -180,8 +180,8 @@ class MainActivity : ComponentActivity() {
                 setHomeLayout = { viewModel.updateSettingsOnDevice { s -> s.copy(homeLayout = it) } },
                 setClock24 = { viewModel.updateSettingsOnDevice { s -> s.copy(clock24 = it) } },
                 setShowSeconds = { viewModel.updateSettingsOnDevice { s -> s.copy(showSeconds = it) } },
-                setAlertHapticOnly = { on ->
-                    viewModel.updateSettingsOnDevice { s -> s.copy(alertHapticOnly = on) }
+                setAlertSilent = { on ->
+                    viewModel.updateSettingsOnDevice { s -> s.copy(alertSilent = on) }
                 },
                 setVolumeOverlay = { on ->
                     viewModel.updateSettingsOnDevice { s -> s.copy(volumeOverlay = on) }

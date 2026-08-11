@@ -73,7 +73,7 @@ fun SettingsScreen(
             DisplaySection(state.settings, palette, actions)
             BacklightSection(state, palette, actions)
             FocusSection(state.settings, palette, actions)
-            ScheduleSection(state.settings, state.hasVibrator, palette, actions)
+            ScheduleSection(state.settings, palette, actions)
         }
 
         StatusPanel(
@@ -228,7 +228,6 @@ private fun FocusSection(
 @Composable
 private fun ScheduleSection(
     settings: DeckSettings,
-    hasVibrator: Boolean,
     palette: DeckPalette,
     actions: DeckActions,
 ) {
@@ -273,37 +272,9 @@ private fun ScheduleSection(
         Toggle("Daily alarm", settings.alarmEnabled, palette) { actions.setAlarmEnabled(it) }
         Gap(DeckMetrics.Space2)
         // 端末のマナーモードは設定に関係なく尊重する。これは鳴らせる状態でも
-        // 鳴らさないための設定。
-        //
-        // 振動子が無い端末では選ばせない。選べると「無音で何も起きない
-        // アラーム」になる。
-        if (hasVibrator) {
-            Toggle("Vibrate only", settings.alertHapticOnly, palette) {
-                actions.setAlertHapticOnly(it)
-            }
-        } else {
-            Row(
-                modifier = Modifier.fillMaxWidth().heightIn(min = DeckMetrics.ButtonHeight),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                BasicText(
-                    text = "Vibrate only",
-                    style = DeckType.BodySm.copy(color = palette.ink3),
-                    modifier = Modifier.weight(1f),
-                )
-                BasicText(
-                    text = "no vibrator",
-                    style = DeckType.Meta.copy(color = palette.ink3),
-                )
-            }
-        }
-        Gap(DeckMetrics.Space2)
-        Stepper(
-            title = "Alarm at",
-            value = clockText(settings.alarmMinutes),
-            palette = palette,
-            onStep = { actions.setAlarmTime(settings.alarmMinutes + it * HALF_HOUR) },
-        )
+        // 鳴らさないための設定。この端末は振動しないので、無音のときに残るのは
+        // 全画面表示だけ。
+        Toggle("Silent alerts", settings.alertSilent, palette) { actions.setAlertSilent(it) }
     }
 }
 
