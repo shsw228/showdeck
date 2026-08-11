@@ -12,6 +12,7 @@ import androidx.compose.foundation.text.BasicText
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.TextUnit
@@ -32,18 +33,11 @@ import androidx.compose.ui.unit.TextUnit
 @Composable
 fun RollingClock(
     text: String,
-    color: androidx.compose.ui.graphics.Color,
+    color: Color,
     fontSize: TextUnit,
     modifier: Modifier = Modifier,
 ) {
-    val style = TextStyle(
-        color = color,
-        fontSize = fontSize,
-        // 太字は使わない、が Android Auto の指針。大きな文字ほど細くしてよい。
-        fontWeight = FontWeight.Light,
-        // 桁が動くので、等幅でないと隣の桁まで揺れる。
-        fontFeatureSettings = TABULAR_FIGURES,
-    )
+    val style = clockStyle(color, fontSize)
 
     Row(modifier = modifier, verticalAlignment = Alignment.CenterVertically) {
         text.forEachIndexed { index, char ->
@@ -73,6 +67,16 @@ fun RollingClock(
         }
     }
 }
+
+/** 時計の文字の見た目。桁と区切りで必ず同じものを使う。 */
+private fun clockStyle(color: Color, fontSize: TextUnit) = TextStyle(
+    color = color,
+    fontSize = fontSize,
+    // 太字は使わない、が Android Auto の指針。大きな文字ほど細くしてよい。
+    fontWeight = FontWeight.Light,
+    // 桁が動くので、等幅でないと隣の桁まで揺れる。
+    fontFeatureSettings = TABULAR_FIGURES,
+)
 
 /**
  * 転がる時間。

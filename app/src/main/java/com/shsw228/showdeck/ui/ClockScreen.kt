@@ -96,11 +96,16 @@ fun ClockScreen(
                     ),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
+                // 時計は自分の幅を持つ。箱に押し込めない。
+                //
+                // 以前は weight で箱を作り、そこに収まる文字サイズを計算していた。
+                // 箱の幅と文字の幅は一致しないので必ず差分が出て、時計の右に
+                // 50dp の空きができた。差分を計算で埋めるのではなく、
+                // 差分が生まれない形にする。区切り線とレールは Row が後ろへ並べる。
                 ClockPane(
                     nowState = nowState,
                     palette = palette,
-                    maxHeightRatio = DeckType.CLOCK_HEIGHT_RATIO,
-                    modifier = Modifier.weight(if (palette.minimal) 1f else 1.7f),
+                    modifier = if (palette.minimal) Modifier.weight(1f) else Modifier,
                 )
 
                 // 夜間は情報量を削って時計だけにする。暗い部屋で読むものは無い。
@@ -142,19 +147,22 @@ fun ClockScreen(
 }
 
 /**
- * 時計。大きさは**収まる幅**から決める。
+ * 時計。大きさは**画面高だけ**から決め、幅は決めない。
  *
- * 画面高からの比率で決めていたら、比率を上げたときに区切り線と天気へ食い込んだ。
- * 効いている制約は高さではなく幅で、`HH:mm` の 5 文字が入るかどうかで決まる。
+ * 幅を決めようとしたのが間違いだった。先に weight で箱を作ると、箱の幅と
+ * `HH:mm` の実幅は一致しないので必ず差分が出る。当初はその差分を係数
+ * （`CLOCK_WIDTH_EM`）で埋めようとし、次に `TextMeasurer` で測って埋めようとした。
+ * どちらも「自分で作った隙間を自分で塞ぐ」だけで、隙間を作らなければ要らない。
  *
- * 幅から決めると、夜間に情報レールを畳んだときは自動で大きくなる。
- * 空いた場所を主役が使うので、比率を手で切り替えなくて済む。
+ * いまは高さから文字サイズを決め、幅は文字が持つ自然な幅のまま Row へ渡す。
+ * 区切り線は時計の実幅のすぐ隣に来る。並べるのは Row の仕事で、こちらは
+ * 計算しない。[DeckType.CLOCK_HEIGHT_RATIO] は補正ではなく「主役に画面高の
+ * どれだけを与えるか」という設計上の取り分。
  */
 @Composable
 private fun ClockPane(
     nowState: State<LocalDateTime>,
     palette: DeckPalette,
-    maxHeightRatio: Float,
     modifier: Modifier = Modifier,
 ) {
     // derivedStateOf を挟むことで、文字列が変わる毎分だけ再コンポーズされる。
@@ -164,24 +172,15 @@ private fun ClockPane(
     }
 
     BoxWithConstraints(modifier = modifier, contentAlignment = Alignment.Center) {
-        val density = LocalDensity.current
-        // 等幅数字 4 つとコロン 1 つぶんの送り幅。実測で詰めた係数。
-        val byWidth = maxWidth / CLOCK_WIDTH_EM
-        val byHeight = maxHeight * maxHeightRatio
-        val fontSize = with(density) { minOf(byWidth, byHeight).toSp() }
+        // dp から sp への変換は density に通す。端末の文字サイズ設定が
+        // 等倍でないときに、dp 値をそのまま sp と読むと崩れる。
+        val fontSize = with(LocalDensity.current) {
+            (maxHeight * DeckType.CLOCK_HEIGHT_RATIO).toSp()
+        }
 
         RollingClock(text = timeText, color = palette.primary, fontSize = fontSize)
     }
 }
-
-/**
- * `HH:mm` を等幅数字で組んだときの、フォントサイズに対する横幅の比。
- *
- * 実機のスクリーンショットを測って求めた値。当てずっぽうで 2.65 を置いていたら、
- * 文字がペインより 50dp 細くなり、時計の右に死んだ空間ができていた。
- * 実測は 2.34 で、わずかに余裕を持たせてある。
- */
-private const val CLOCK_WIDTH_EM = 2.38f
 
 /**
  * 焼き付き対策の微小オフセット。
