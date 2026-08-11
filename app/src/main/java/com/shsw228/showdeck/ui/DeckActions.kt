@@ -64,8 +64,14 @@ data class DeckActions(
     /** 天気の地点を現在地に合わせる。取れなければ何もしない。 */
     val useCurrentLocation: () -> Unit = {},
 
-    /** 既定のホームアプリとして固定するか。 */
+    /**
+     * 既定のホームアプリとして**固定**するか（Device Owner のみ）。
+     * 固定すると選択ダイアログが二度と出なくなる。
+     */
     val setHomeLauncher: (Boolean) -> Unit = {},
+
+    /** システムの「デフォルトのホームアプリ」画面を開く。 */
+    val openHomeSettings: () -> Unit = {},
 
     /** 独自の音量インジケータを出すか。false なら SystemUI に任せる。 */
     val setVolumeOverlay: (Boolean) -> Unit = {},

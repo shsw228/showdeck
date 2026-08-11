@@ -70,7 +70,13 @@ fun SettingsScreen(
                 .verticalScroll(rememberScrollState()),
             verticalArrangement = Arrangement.spacedBy(DeckMetrics.TileGap),
         ) {
-            DisplaySection(state.settings, palette, actions)
+            DisplaySection(
+                settings = state.settings,
+                isDefaultHome = state.isDefaultHome,
+                canPin = state.capabilities?.isDeviceOwner == true,
+                palette = palette,
+                actions = actions,
+            )
             BacklightSection(state, palette, actions)
             FocusSection(state.settings, palette, actions)
             ScheduleSection(state.settings, palette, actions)
@@ -91,6 +97,8 @@ fun SettingsScreen(
 @Composable
 private fun DisplaySection(
     settings: DeckSettings,
+    isDefaultHome: Boolean,
+    canPin: Boolean,
     palette: DeckPalette,
     actions: DeckActions,
 ) {
@@ -122,7 +130,42 @@ private fun DisplaySection(
         Gap(DeckMetrics.Space2)
         // 固定すると選択ダイアログが出なくなる。普通の端末としても使いたい
         // なら切っておく。
-        Toggle("Use as home app", settings.homeLauncher, palette) { actions.setHomeLauncher(it) }
+        // 既定ホームは system の画面で選ばせる。インストール時に選択ダイアログは
+        // 出ないので、自分から開く動線が無いと「既定にする」手段が無い。
+        Row(
+            modifier = Modifier.fillMaxWidth().heightIn(min = DeckMetrics.ButtonHeight),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Column(Modifier.weight(1f)) {
+                BasicText(
+                    text = "Home app",
+                    style = DeckType.BodySm.copy(color = palette.ink2),
+                )
+                BasicText(
+                    text = if (isDefaultHome) "ShowDeck" else "another launcher",
+                    style = DeckType.Meta.copy(
+                        color = if (isDefaultHome) palette.tideInk else palette.ink3,
+                    ),
+                )
+            }
+            PillButton(
+                onClick = actions.openHomeSettings,
+                background = palette.surface,
+                height = DeckMetrics.ButtonHeightSm,
+                paddingH = DeckMetrics.ButtonPaddingHSm,
+            ) {
+                ButtonLabel("Change", palette.ink, DeckType.BodySm)
+            }
+        }
+
+        // 固定は Device Owner だけ。選択ダイアログが二度と出なくなるので、
+        // 「専用機にする」と決めたときだけ触る。
+        if (canPin) {
+            Gap(DeckMetrics.Space2)
+            Toggle("Lock as home app", settings.homeLauncher, palette) {
+                actions.setHomeLauncher(it)
+            }
+        }
         Gap(DeckMetrics.Space2)
         // 切ると SystemUI のスライダが出る（キーを消費しない）。
         Toggle("Own volume bar", settings.volumeOverlay, palette) { actions.setVolumeOverlay(it) }

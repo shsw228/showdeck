@@ -59,6 +59,9 @@ android {
     buildTypes {
         debug {
             applicationIdSuffix = ".debug"
+            // 表示名は src/debug/res で差し替える。debug はホームアプリの候補として
+            // release と並ぶので、同名だと「デフォルトのホームアプリ」に
+            // ShowDeck が 2 つ出て、どちらか分からない。
             signingConfig = signingConfigs.findByName("platform") ?: signingConfigs.getByName("debug")
         }
         release {

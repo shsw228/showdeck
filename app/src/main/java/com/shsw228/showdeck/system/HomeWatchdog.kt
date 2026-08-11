@@ -61,6 +61,35 @@ object HomeWatchdog {
     private const val REQUEST_CODE = 1
 }
 
+/**
+ * 「デフォルトのホームアプリ」の設定を開く。
+ *
+ * インストール時に選択ダイアログは出ない。Android がそれを出すのは
+ * **ホームキーが押されて既定が未設定のとき**だけ。だから自分から
+ * 選ばせる動線が要る。
+ *
+ * Device Owner なら固定もできるが、それは「二度と選択できなくする」操作。
+ * 普通に選ぶだけならこちらを使う。
+ */
+fun openHomeSettings(context: Context) {
+    runCatching {
+        context.startActivity(
+            Intent(android.provider.Settings.ACTION_HOME_SETTINGS)
+                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK),
+        )
+    }.onFailure {
+        Log.w("ShowDeck", "ホーム設定を開けなかった", it)
+        openAndroidSettings(context)
+    }
+}
+
+/** いま既定のホームアプリが自分か。 */
+fun isDefaultHome(context: Context): Boolean {
+    val intent = Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_HOME)
+    val resolved = context.packageManager.resolveActivity(intent, 0)
+    return resolved?.activityInfo?.packageName == context.packageName
+}
+
 /** Android の設定を開く。 */
 fun openAndroidSettings(context: Context) {
     runCatching {

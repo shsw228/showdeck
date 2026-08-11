@@ -208,6 +208,11 @@ class DeckViewModel(
         _uiState.update { it.copy(selectedDay = date, selectedEventId = null) }
     }
 
+    /** 既定ホームの状況を測り直す。設定画面から戻ってきたときに呼ぶ。 */
+    fun refreshDefaultHome(isDefault: Boolean) {
+        _uiState.update { it.copy(isDefaultHome = isDefault) }
+    }
+
     fun selectEvent(uid: String) {
         _uiState.update { it.copy(selectedEventId = uid) }
     }

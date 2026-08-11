@@ -35,6 +35,8 @@ import com.shsw228.showdeck.settings.SettingsStore
 import com.shsw228.showdeck.system.DeviceSetup
 import com.shsw228.showdeck.system.HomeWatchdog
 import com.shsw228.showdeck.system.Locator
+import com.shsw228.showdeck.system.isDefaultHome
+import com.shsw228.showdeck.system.openHomeSettings
 import com.shsw228.showdeck.system.ServiceAdvertiser
 import com.shsw228.showdeck.system.openAndroidSettings
 import com.shsw228.showdeck.system.lightSensorFlow
@@ -251,6 +253,7 @@ class MainActivity : ComponentActivity() {
                 },
 
                 openAndroidSettings = { openAndroidSettings(this@MainActivity) },
+                openHomeSettings = { openHomeSettings(this@MainActivity) },
                 useCurrentLocation = {
                     // 取れなければ何もしない。位置が来ないことで天気が消えるのは筋が悪い。
                     Locator.lastKnown(applicationContext)?.let { at ->
@@ -429,7 +432,11 @@ class MainActivity : ComponentActivity() {
         // **ホームアプリのときだけ引き戻す。** そうでないなら、この端末は
         // 普通の Android として使われている。3 分ごとに前面を奪うのは
         // ダッシュボードの仕事ではない。
-        if (!settings.homeLauncher) {
+        //
+        // 設定値ではなく実際の既定を見る。system の設定画面から既定にした場合、
+        // 設定値（固定したか）は false のままなので、そちらで判定すると
+        // 既定ホームなのに引き戻さないことになる。
+        if (!isDefaultHome(applicationContext)) {
             HomeWatchdog.disarm(applicationContext)
             return
         }
@@ -439,6 +446,8 @@ class MainActivity : ComponentActivity() {
     override fun onResume() {
         super.onResume()
         HomeWatchdog.disarm(applicationContext)
+        // 設定画面で既定を変えて戻ってくることがあるので、そのたびに測り直す。
+        viewModel.refreshDefaultHome(isDefaultHome(applicationContext))
     }
 
     override fun onWindowFocusChanged(hasFocus: Boolean) {

@@ -50,6 +50,9 @@ data class DeckUiState(
     /** Calendar 画面で選んでいる予定。null なら一覧の先頭。 */
     val selectedEventId: String? = null,
 
+    /** いま既定のホームアプリが自分か。前面に戻るたびに測り直す。 */
+    val isDefaultHome: Boolean = false,
+
     /** 音量を操作した直後だけ入る。数秒で消える。 */
     val volume: VolumeLevel? = null,
 

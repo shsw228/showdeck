@@ -90,6 +90,10 @@ Android 化した Echo Show 5 第2世代（`cronos`）向けの常駐ダッシ�
 - **この ROM に無い adb コマンドがある。** `cmd audio` `media volume`
   `pm clear-package-preferred-activities` `cmd package get-home-activities` は
   いずれも使えなかった。「コマンドが無い」を「機能が無い」と混同しない
+- **debug ビルドを併存させると既定ホームの選択が消える。** debug は
+  `applicationIdSuffix = ".debug"` の別パッケージで、これも HOME の候補に入る。
+  候補集合が変わると Android は preferred activity を捨てるので、
+  `adb install` するたびユーザーの「常時」が白紙に戻る。実機に置くのは release にする
 - **無効化パッケージは `enabled=` の数値で見る。** `pm enable` は成功と表示しても
   状態が戻らないことがある（`enabled=3` = `DISABLED_USER`）。`pm default-state` を使い、
   **`package-restrictions.xml` の書き出しは遅延するので 30 秒以上待ってから再起動する。**
