@@ -121,6 +121,16 @@ class DeckViewModel(
         publishAlertState()
     }
 
+    fun togglePomodoroPause() {
+        scheduler.togglePomodoroPause(clock())
+        publishAlertState()
+    }
+
+    fun skipPomodoro() {
+        scheduler.skipPomodoro(_uiState.value.settings.pomodoroConfig, clock())
+        publishAlertState()
+    }
+
     /** 端末の画面から直接いじる設定。Web を開かずに済ませたい少数だけ。 */
     fun updateSettingsOnDevice(transform: (DeckSettings) -> DeckSettings) {
         viewModelScope.launch {
@@ -262,6 +272,8 @@ class DeckViewModel(
                 firing = scheduler.firing,
                 timer = scheduler.timer,
                 pomodoro = scheduler.pomodoro,
+                pomodoroCompletedToday =
+                    scheduler.tally.countingOn(_now.value.toLocalDate()).completedWork,
             )
         }
     }

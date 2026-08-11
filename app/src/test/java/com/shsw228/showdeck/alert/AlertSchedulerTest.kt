@@ -22,7 +22,7 @@ class AlertSchedulerTest {
     private val scheduler = AlertScheduler()
 
     /** ポモドーロは動かさない。開始していなければこの値は使われない。 */
-    private val noPomodoro = PomodoroConfig(25, 5, 15, 4)
+    private val noPomodoro = PomodoroConfig(25, 5, 15, 4, autoStartWork = true, autoStartBreak = true, dailyGoal = 8)
 
     private fun at(day: Int, hour: Int, minute: Int, second: Int = 0) =
         LocalDateTime.of(2026, 8, day, hour, minute, second)

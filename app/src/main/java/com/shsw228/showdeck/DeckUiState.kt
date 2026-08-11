@@ -24,6 +24,8 @@ data class DeckUiState(
     val firing: FiringAlert? = null,
     val timer: RunningTimer? = null,
     val pomodoro: PomodoroState? = null,
+    /** 今日こなした作業回数。 */
+    val pomodoroCompletedToday: Int = 0,
 ) {
     /** そのモードで sysfs に書くべきバックライトの raw 値。 */
     val backlightRaw: Int get() = backlightFor(mode, settings)

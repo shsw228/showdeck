@@ -50,6 +50,9 @@ class SettingsStore(private val context: Context) {
             prefs[POMODORO_SHORT] = settings.pomodoroShortBreakMinutes
             prefs[POMODORO_LONG] = settings.pomodoroLongBreakMinutes
             prefs[POMODORO_ROUNDS] = settings.pomodoroRoundsBeforeLongBreak
+            prefs[POMODORO_AUTO_WORK] = settings.pomodoroAutoStartWork
+            prefs[POMODORO_AUTO_BREAK] = settings.pomodoroAutoStartBreak
+            prefs[POMODORO_GOAL] = settings.pomodoroDailyGoal
         }
     }
 
@@ -99,6 +102,9 @@ class SettingsStore(private val context: Context) {
                 (this[POMODORO_LONG] ?: d.pomodoroLongBreakMinutes).coerceIn(1, 120),
             pomodoroRoundsBeforeLongBreak =
                 (this[POMODORO_ROUNDS] ?: d.pomodoroRoundsBeforeLongBreak).coerceIn(1, 12),
+            pomodoroAutoStartWork = this[POMODORO_AUTO_WORK] ?: d.pomodoroAutoStartWork,
+            pomodoroAutoStartBreak = this[POMODORO_AUTO_BREAK] ?: d.pomodoroAutoStartBreak,
+            pomodoroDailyGoal = (this[POMODORO_GOAL] ?: d.pomodoroDailyGoal).coerceIn(1, 24),
         )
     }
 
@@ -124,5 +130,8 @@ class SettingsStore(private val context: Context) {
         val POMODORO_SHORT = intPreferencesKey("pomodoro_short")
         val POMODORO_LONG = intPreferencesKey("pomodoro_long")
         val POMODORO_ROUNDS = intPreferencesKey("pomodoro_rounds")
+        val POMODORO_AUTO_WORK = booleanPreferencesKey("pomodoro_auto_work")
+        val POMODORO_AUTO_BREAK = booleanPreferencesKey("pomodoro_auto_break")
+        val POMODORO_GOAL = intPreferencesKey("pomodoro_goal")
     }
 }

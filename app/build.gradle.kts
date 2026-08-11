@@ -1,6 +1,10 @@
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.compose)
+    // 960x480・密度 195 という特殊な画面なので、レイアウト崩れは実機でしか
+    // 見つからなかった（「火曜E」と切れる、気温が 2 行に折り返す等）。
+    // Preview を撮って比較することで、焼く前に気づけるようにする。
+    alias(libs.plugins.screenshot)
 }
 
 val platformKeystore = rootProject.file("keys/platform.p12")
@@ -78,6 +82,8 @@ android {
         compose = true
     }
 
+    experimentalProperties["android.experimental.enableScreenshotTest"] = true
+
     androidResources {
         // androidx が約 90 ロケール分のリソースを持ち込む。この端末では無駄。
         localeFilters += listOf("ja", "en")
@@ -126,4 +132,7 @@ dependencies {
     testImplementation(libs.json)
 
     testImplementation(libs.kotlinx.coroutines.test)
+
+    screenshotTestImplementation(libs.screenshot.validation.api)
+    screenshotTestImplementation(libs.androidx.compose.ui.tooling)
 }

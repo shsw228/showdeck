@@ -15,6 +15,8 @@ import com.shsw228.showdeck.DeckMode
  */
 data class DeckPalette(
     val background: Color,
+    /** ボタンなど、背景からわずかに浮かせる面。常時表示なので光を増やしすぎない。 */
+    val surface: Color,
     val primary: Color,
     val secondary: Color,
     val tertiary: Color,
@@ -26,6 +28,7 @@ data class DeckPalette(
     companion object {
         val Day = DeckPalette(
             background = Color(0xFF07080A),
+            surface = Color(0xFF16181C),
             primary = Color(0xFFF2EFE6),
             secondary = Color(0xFF9AA0A6),
             tertiary = Color(0xFF4A4F55),
@@ -35,6 +38,7 @@ data class DeckPalette(
 
         val Night = DeckPalette(
             background = Color(0xFF000000),
+            surface = Color(0xFF140602),
             primary = Color(0xFF8C2F12),
             secondary = Color(0xFF4A1808),
             tertiary = Color(0xFF2A0D04),

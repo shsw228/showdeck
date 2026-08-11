@@ -93,6 +93,9 @@ class WebCtlServer(
                 .coerceIn(1, 120),
             pomodoroRoundsBeforeLongBreak =
                 params.int("pomoRounds", current.pomodoroRoundsBeforeLongBreak).coerceIn(1, 12),
+            pomodoroAutoStartWork = params.containsKey("pomoAutoWork"),
+            pomodoroAutoStartBreak = params.containsKey("pomoAutoBreak"),
+            pomodoroDailyGoal = params.int("pomoGoal", current.pomodoroDailyGoal).coerceIn(1, 24),
         )
         runBlocking { viewModel.updateSettings(updated) }
         Log.i(TAG, "設定を更新: $updated")
@@ -195,10 +198,18 @@ private fun renderIndex(state: DeckUiState): String {
         else -> "動作中のタイマーはありません"
     }
 
-    val pomodoroStatus = state.pomodoro?.let {
-        "${it.phase.label} ${it.round} 回目 — ${timeOfDay(it.endsAt)} まで"
-    } ?: "動作していません（${s.pomodoroWorkMinutes}分 / ${s.pomodoroShortBreakMinutes}分 / " +
-        "${s.pomodoroRoundsBeforeLongBreak}回ごとに${s.pomodoroLongBreakMinutes}分）"
+    val pomodoroStatus = buildString {
+        val running = state.pomodoro
+        if (running == null) {
+            append("動作していません（${s.pomodoroWorkMinutes}分 / ${s.pomodoroShortBreakMinutes}分 / ")
+            append("${s.pomodoroRoundsBeforeLongBreak}回ごとに${s.pomodoroLongBreakMinutes}分）")
+        } else if (running.isPaused) {
+            append("${running.phase.label} ${running.round} 回目 — 停止中")
+        } else {
+            append("${running.phase.label} ${running.round} 回目 — ${timeOfDay(running.endsAt)} まで")
+        }
+        append(" / 今日 ${state.pomodoroCompletedToday} / ${s.pomodoroDailyGoal} 回")
+    }
 
     val weatherStatus = state.weather?.let {
         buildString {
@@ -327,6 +338,11 @@ private fun renderIndex(state: DeckUiState): String {
     <label><span>休憩（分）</span><input type="number" name="pomoShort" min="1" max="60" value="${s.pomodoroShortBreakMinutes}"></label>
     <label><span>長い休憩（分）</span><input type="number" name="pomoLong" min="1" max="120" value="${s.pomodoroLongBreakMinutes}"></label>
     <label><span>長い休憩までの回数</span><input type="number" name="pomoRounds" min="1" max="12" value="${s.pomodoroRoundsBeforeLongBreak}"></label>
+    <label><span>1 日の目標回数</span><input type="number" name="pomoGoal" min="1" max="24" value="${s.pomodoroDailyGoal}"></label>
+    <label><span>休憩を自動で始める</span><input type="checkbox" name="pomoAutoBreak" ${if (s.pomodoroAutoStartBreak) "checked" else ""}></label>
+    <label><span>作業を自動で始める</span><input type="checkbox" name="pomoAutoWork" ${if (s.pomodoroAutoStartWork) "checked" else ""}></label>
+    <p class="hint">作業まで自動で始めると、席を外している間に 1 回分が流れる。
+       既定では休憩だけ自動で始まり、作業は自分で始める。</p>
   </fieldset>
 
   <fieldset>

@@ -6,7 +6,7 @@ Android 化した Echo Show 5 第2世代（`cronos`）向けの常駐ダッシ�
 
 作業前に必ず踏まえること。一般的な Android アプリの常識が通用しない箇所がある。
 
-- **960×480 / 密度 195（≒ 788×394 dp）/ 5.5 インチ / 視距離 1〜3m**。サイズは必ず画面高からの相対で決める。固定 dp を書かない
+- **960×480 / 密度 195（≒ 788×394 dp）/ 5.5 インチ / 視距離 1〜3m**。寸法は「寸法と文字」の節に従う
 - **RAM が少ない**。material3・WebView・大きな画像ライブラリを安易に入れない。依存を足すときは理由をコメントに残す
 - **常時表示**。毎秒の再コンポーズを避ける。時刻は `State` のまま末端へ渡し、`derivedStateOf` で実際に変わったときだけ再コンポーズさせる
 - **輝度は sysfs を直接持っている**。ウィンドウ輝度も `Settings.System.SCREEN_BRIGHTNESS` も実機では十分に暗くならなかった（README の実測表を参照）。DisplayPowerController が書き戻すので、定期的に押し戻す前提で組む
@@ -52,6 +52,26 @@ Android 化した Echo Show 5 第2世代（`cronos`）向けの常駐ダッシ�
 - **Web 設定画面の経路を増やしたら認証を通すこと。** 認証は `serve()` の先頭で一括して行っている。パスごとに書く形にしない
 - **`hidden_api_policy` を緩めない。** 端末上の全アプリの制限まで下がる。ShowDeck はリフレクションを使っていない
 
+## 寸法と文字
+
+**Android Auto の指針に従う。** `ui/theme/DeckMetrics.kt` に定数がある。
+
+- 押せるものは **76dp 以上**。`DeckMetrics.TouchTarget` を使う
+- 主要な情報の文字は **24sp 以上**（`DeckType.Body`）。それ未満は `DeckType.Caption` で補足だけ
+- 4dp グリッド。`DeckMetrics.Gap*` を使い、生の `dp` を散らさない
+- 太字を使わない。medium も控えめに
+- **「画面高の何%」で寸法を決めない。** 密度が読めなかった頃の名残で、実測が出た以上は基準を割る（実際に 53dp / 20sp になっていた）。例外は時計だけ
+
+## UI を変えたら
+
+**`./gradlew :app:updateDebugScreenshotTest` で参照画像を撮り直し、差分を目で見る。**
+960×480・密度 195 という特殊な画面で、レイアウト崩れは実機でしか起きなかった。
+
+- Preview は `app/src/screenshotTest/` に置く。`@PreviewTest` と `device = DEVICE_SPEC` を付ける
+- `dpi=195` を外さない。既定の 160dpi だと 1dp = 1px になり、実機と字詰まりが変わって意味がない
+- 参照画像は `app/src/screenshotTestDebug/reference/` にコミットする
+- 検証は `./gradlew :app:validateDebugScreenshotTest`
+
 ## アーキテクチャ
 
 Android の推奨アーキテクチャに沿っている。UI 層（Compose + `DeckViewModel`）とデータ層
@@ -75,6 +95,8 @@ Android の推奨アーキテクチャに沿っている。UI 層（Compose + `D
 ./scripts/fetch-platform-keys.sh   # 初回のみ。これが無いとインストールできない
 ./scripts/fetch-android-skills.sh  # Google の Android skills を .claude/skills/ に取得
 ./gradlew assembleRelease      # ビルド
+./gradlew :app:updateDebugScreenshotTest    # UI を変えたら参照画像を撮り直す
+./gradlew :app:validateDebugScreenshotTest  # 参照画像との差分を検証
 ./gradlew installRelease       # 実機へインストール
 ./scripts/check-device.sh      # 端末の素性を確認（何も変更しない）
 ./scripts/setup-device.sh      # 端末側セットアップ
@@ -93,9 +115,9 @@ debug ビルドは `applicationId` に `.debug` が付く。スクリプトは r
 
 ## Testing Guidelines
 
-現状ユニットテストは無い。ロジックを足すときは `app/src/test/` に Kotlin のプレーンなテストを置く。時刻判定（`isNightAt` の日付またぎなど）は実機を待たずに検証できるので優先的にテストする。
+ロジックは `app/src/test/` にプレーンなユニットテストを置く。**時間に依存する判定を実機で確かめない。** 日付をまたぐ夜間判定やポモドーロの「4 回目の作業の後だけ長い休憩」は、実機で試すと数時間かかる。純粋関数に切り出して境界を固める。
 
-実機確認は `./scripts/check-device.sh` の出力と、端末上の長押し診断オーバーレイで行う。
+UI は `app/src/screenshotTest/` の Preview で撮る（「UI を変えたら」の節を参照）。実機確認は `./scripts/check-device.sh` の出力と、端末の長押しで出る操作パネルで行う。
 
 ## Commit & Pull Request Guidelines
 

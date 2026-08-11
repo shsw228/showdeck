@@ -55,11 +55,14 @@ data class DeckSettings(
     val alarmEnabled: Boolean,
     val alarmMinutes: Int,
 
-    /** ポモドーロの区間の長さ。 */
+    /** ポモドーロ。 */
     val pomodoroWorkMinutes: Int,
     val pomodoroShortBreakMinutes: Int,
     val pomodoroLongBreakMinutes: Int,
     val pomodoroRoundsBeforeLongBreak: Int,
+    val pomodoroAutoStartWork: Boolean,
+    val pomodoroAutoStartBreak: Boolean,
+    val pomodoroDailyGoal: Int,
 ) {
     val pomodoroConfig: PomodoroConfig
         get() = PomodoroConfig(
@@ -67,6 +70,9 @@ data class DeckSettings(
             shortBreakMinutes = pomodoroShortBreakMinutes,
             longBreakMinutes = pomodoroLongBreakMinutes,
             roundsBeforeLongBreak = pomodoroRoundsBeforeLongBreak,
+            autoStartWork = pomodoroAutoStartWork,
+            autoStartBreak = pomodoroAutoStartBreak,
+            dailyGoal = pomodoroDailyGoal,
         )
 
     val nightStart: LocalTime get() = minutesToTime(nightStartMinutes)
@@ -98,6 +104,9 @@ data class DeckSettings(
             pomodoroShortBreakMinutes = DeckConfig.POMODORO_SHORT_BREAK_MINUTES,
             pomodoroLongBreakMinutes = DeckConfig.POMODORO_LONG_BREAK_MINUTES,
             pomodoroRoundsBeforeLongBreak = DeckConfig.POMODORO_ROUNDS_BEFORE_LONG_BREAK,
+            pomodoroAutoStartWork = DeckConfig.POMODORO_AUTO_START_WORK,
+            pomodoroAutoStartBreak = DeckConfig.POMODORO_AUTO_START_BREAK,
+            pomodoroDailyGoal = DeckConfig.POMODORO_DAILY_GOAL,
         )
     }
 }

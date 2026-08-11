@@ -135,10 +135,13 @@ class MainActivity : ComponentActivity() {
         ) {
             ClockScreen(
                 nowState = nowState,
+                state = state,
                 palette = palette,
-                weather = state.weather,
-                pomodoro = state.pomodoro,
                 onWeatherClick = { showForecast = true },
+                onPomodoroStart = { viewModel.startPomodoro() },
+                onPomodoroPause = { viewModel.togglePomodoroPause() },
+                onPomodoroSkip = { viewModel.skipPomodoro() },
+                onPomodoroStop = { viewModel.stopPomodoro() },
             )
 
             state.weather?.let { snapshot ->
@@ -155,6 +158,7 @@ class MainActivity : ComponentActivity() {
             if (showControls) {
                 ControlOverlay(
                     state = state,
+                    palette = palette,
                     webUser = WebAuth.USER,
                     webPort = DeckConfig.WEB_PORT,
                     // 明るさは押した瞬間に効いてほしいので、いま効いている側だけを動かす。
@@ -181,8 +185,6 @@ class MainActivity : ComponentActivity() {
                             it.copy(alarmEnabled = !it.alarmEnabled)
                         }
                     },
-                    onStartPomodoro = { viewModel.startPomodoro() },
-                    onStopPomodoro = { viewModel.stopPomodoro() },
                     onDismiss = { showControls = false },
                 )
             }

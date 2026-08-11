@@ -77,6 +77,16 @@ object DeckConfig {
     const val POMODORO_LONG_BREAK_MINUTES = 15
     const val POMODORO_ROUNDS_BEFORE_LONG_BREAK = 4
 
+    /**
+     * 休憩は自動で始め、作業は自分で始める。
+     * 作業まで自動で始まると、席を外している間に 1 回分が流れてしまう。
+     */
+    const val POMODORO_AUTO_START_BREAK = true
+    const val POMODORO_AUTO_START_WORK = false
+
+    /** 1 日の目標回数。8 回 = 作業 200 分。 */
+    const val POMODORO_DAILY_GOAL = 8
+
     /** 端末内 Web 設定画面のポート。 */
     const val WEB_PORT = 8080
 }

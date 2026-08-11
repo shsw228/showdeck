@@ -31,6 +31,10 @@ class AlertScheduler {
     var pomodoro: PomodoroState? = null
         private set
 
+    /** 今日こなした作業回数。日付が変わったら 0 に戻る。 */
+    var tally: PomodoroTally = PomodoroTally(LocalDate.MIN, 0)
+        private set
+
     /** アラームを 1 日に何度も鳴らさないための記録。 */
     private var alarmFiredOn: LocalDate? = null
 
@@ -51,6 +55,28 @@ class AlertScheduler {
 
     fun stopPomodoro() {
         pomodoro = null
+    }
+
+    /** 一時停止と再開を切り替える。作業を中断したまま時間だけ過ぎるのを防ぐ。 */
+    fun togglePomodoroPause(now: LocalDateTime = LocalDateTime.now()) {
+        pomodoro = pomodoro?.let { if (it.isPaused) it.resume(now) else it.pause(now) }
+    }
+
+    /**
+     * いまの区間を飛ばして次へ進む。
+     *
+     * 早く終わった作業を 25 分待つ意味はないし、休憩を切り上げたいこともある。
+     * 作業を飛ばした場合も「こなした 1 回」として数える。
+     */
+    fun skipPomodoro(config: PomodoroConfig, now: LocalDateTime = LocalDateTime.now()) {
+        val current = pomodoro ?: return
+        if (current.phase == PomodoroPhase.WORK) countCompletedWork(now)
+        pomodoro = advance(current, config, now)
+    }
+
+    private fun countCompletedWork(now: LocalDateTime) {
+        val today = tally.countingOn(now.toLocalDate())
+        tally = today.copy(completedWork = today.completedWork + 1)
     }
 
     /**
@@ -116,7 +142,11 @@ class AlertScheduler {
      */
     private fun advancePomodoro(now: LocalDateTime, config: PomodoroConfig): Boolean {
         val current = pomodoro ?: return false
+        // 一時停止中は時間を進めない。止めたまま裏で区間が終わっては意味がない。
+        if (current.isPaused) return false
         if (now.isBefore(current.endsAt)) return false
+
+        if (current.phase == PomodoroPhase.WORK) countCompletedWork(now)
 
         val next = advance(current, config, now)
         pomodoro = next
