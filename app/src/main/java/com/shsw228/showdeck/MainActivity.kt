@@ -19,6 +19,7 @@ import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
 import com.shsw228.showdeck.admin.DeviceAdmin
+import com.shsw228.showdeck.system.Backlight
 import com.shsw228.showdeck.system.DeviceSetup
 import com.shsw228.showdeck.system.localIpAddress
 import com.shsw228.showdeck.system.rememberNowState
@@ -26,7 +27,11 @@ import com.shsw228.showdeck.ui.ClockScreen
 import com.shsw228.showdeck.ui.DiagnosticsOverlay
 import com.shsw228.showdeck.ui.theme.paletteFor
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
+
+/** DisplayPowerController に書き戻された輝度を押し戻す間隔。読み取りだけなら安い。 */
+private const val BACKLIGHT_ENFORCE_INTERVAL_MS = 15_000L
 
 /**
  * ShowDeck の唯一の Activity。
@@ -54,10 +59,13 @@ class MainActivity : ComponentActivity() {
             }
 
             // IP は起動時に一度だけ取れば十分。据え置き機で頻繁には変わらない。
-            val ipAddress = remember { localIpAddress() }
+            val ipAddress = remember { localIpAddress(this@MainActivity) }
 
             var capabilities by remember { mutableStateOf<DeviceSetup.Capabilities?>(null) }
             var showDiagnostics by remember { mutableStateOf(false) }
+
+            // su の有無を見に行かない安価な判定。main スレッドから読んでよい。
+            val canControlBacklight = remember { Backlight.canWriteDirectly }
 
             // 端末設定の適用は su の有無判定でプロセスを起こすため、必ず IO へ逃がす。
             // 起動のたびに流すことで、OTA や設定リセットで飛んでも自動で戻る。
@@ -68,8 +76,21 @@ class MainActivity : ComponentActivity() {
                 }
             }
 
-            LaunchedEffect(palette.brightness) {
-                setWindowBrightness(palette.brightness)
+            // 輝度は sysfs を直接持つ方式に一本化している。実測で分かったこと:
+            //   - ウィンドウ輝度 0.01 は DisplayPowerController に無視され、raw 255 のままだった
+            //   - Settings.System.SCREEN_BRIGHTNESS は raw 10 で頭打ち（OS の下限）
+            //   - sysfs 直書きなら raw 1 まで届き、何も起きなければ保持される
+            // ただし画面まわりのイベントで書き戻されるので、定期的に押し戻す。
+            // sysfs が書けない環境ではウィンドウ輝度にフォールバックする。
+            LaunchedEffect(palette, canControlBacklight) {
+                if (canControlBacklight) {
+                    while (true) {
+                        withContext(Dispatchers.IO) { Backlight.enforce(palette.backlightRaw) }
+                        delay(BACKLIGHT_ENFORCE_INTERVAL_MS)
+                    }
+                } else {
+                    setWindowBrightness(palette.brightness)
+                }
             }
 
             Box(
@@ -117,8 +138,8 @@ class MainActivity : ComponentActivity() {
      * ウィンドウ単位の輝度を設定する。
      *
      * Settings.System を書き換える方式と違って権限が一切要らず、
-     * 端末全体の設定値も汚さない。ただし OS が持つ最低輝度より下には行けない。
-     * 暗室でさらに落としたい場合は root でバックライトを直接叩くことになる（Su.writeBacklight）。
+     * 端末全体の設定値も汚さない。ただし OS が持つ最低輝度より下には行けないので、
+     * 暗室での減光は [Backlight] が sysfs 側で担う。
      */
     private fun setWindowBrightness(value: Float) {
         window.attributes = window.attributes.apply {

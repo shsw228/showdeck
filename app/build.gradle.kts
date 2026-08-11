@@ -3,6 +3,15 @@ plugins {
     alias(libs.plugins.kotlin.compose)
 }
 
+val platformKeystore = rootProject.file("keys/platform.p12")
+if (!platformKeystore.exists()) {
+    logger.warn(
+        "keys/platform.p12 がありません。./scripts/fetch-platform-keys.sh を実行してください。\n" +
+            "プラットフォーム署名なしでビルドした APK は、sharedUserId=android.uid.system の\n" +
+            "署名検証に失敗して端末にインストールできません。",
+    )
+}
+
 android {
     namespace = "com.shsw228.showdeck"
     compileSdk = 37
@@ -19,11 +28,34 @@ android {
 
         versionCode = 1
         versionName = "0.1.0"
+
+        ndk {
+            // 実機は LineageOS 18.1 の 32bit ビルド（ro.product.cpu.abi = armeabi-v7a）。
+            // MT8163 は 64bit 対応だが ROM が 32bit なので arm64 は不要。
+            abiFilters += "armeabi-v7a"
+        }
+    }
+
+    signingConfigs {
+        // この端末の LineageOS は AOSP の公開テスト鍵（ro.build.tags = test-keys）で
+        // 署名されている。同じ鍵で署名することで sharedUserId=android.uid.system が
+        // 通り、root なしで signature 権限とバックライト直書きが手に入る。
+        // 鍵は scripts/fetch-platform-keys.sh が取得する。
+        if (platformKeystore.exists()) {
+            create("platform") {
+                storeFile = platformKeystore
+                storePassword = "android"
+                keyAlias = "platform"
+                keyPassword = "android"
+                storeType = "PKCS12"
+            }
+        }
     }
 
     buildTypes {
         debug {
             applicationIdSuffix = ".debug"
+            signingConfig = signingConfigs.findByName("platform") ?: signingConfigs.getByName("debug")
         }
         release {
             // 1GB 機に置くので APK とメモリを削れるだけ削る。
@@ -31,9 +63,9 @@ android {
             isMinifyEnabled = true
             isShrinkResources = true
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
-            // 自前配布なので debug 鍵のまま release を焼ける状態にしておく。
-            // 署名を変えると Device Owner の再設定が必要になるため、鍵は固定して運用する。
-            signingConfig = signingConfigs.getByName("debug")
+            // 署名を変えると sharedUserId が通らなくなり、Device Owner も再設定になる。
+            // 鍵は platform に固定して運用する。
+            signingConfig = signingConfigs.findByName("platform") ?: signingConfigs.getByName("debug")
         }
     }
 

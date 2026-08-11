@@ -37,7 +37,8 @@ fun DiagnosticsOverlay(
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(Color(0xF2000000))
+            // 半透明にすると背後の時計が透けて診断項目が読めない。完全に覆う。
+            .background(Color(0xFF000000))
             .clickable(onClick = onDismiss)
             .padding(24.dp),
     ) {
@@ -47,11 +48,12 @@ fun DiagnosticsOverlay(
         )
         Spacer(Modifier.height(12.dp))
 
+        Capability("system UID (プラットフォーム署名)", capabilities.isSystemUid)
         Capability("WRITE_SECURE_SETTINGS", capabilities.canWriteSecureSettings)
         Capability("WRITE_SETTINGS", capabilities.canWriteSystemSettings)
         Capability("Device Owner", capabilities.isDeviceOwner)
+        Capability("バックライト直書き（OS 下限を超える減光）", capabilities.canWriteBacklight)
         Capability("root (su)", capabilities.hasRoot)
-        Capability("OS 下限を超える減光", capabilities.canDimBelowSystemMinimum)
 
         Spacer(Modifier.height(12.dp))
         BasicText(

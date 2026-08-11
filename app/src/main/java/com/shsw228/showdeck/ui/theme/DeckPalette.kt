@@ -16,6 +16,8 @@ data class DeckPalette(
     val secondary: Color,
     val tertiary: Color,
     val brightness: Float,
+    /** sysfs へ直接書くバックライト値。ウィンドウ輝度では届かない領域を担う。 */
+    val backlightRaw: Int,
     val isNight: Boolean,
 ) {
     companion object {
@@ -25,6 +27,7 @@ data class DeckPalette(
             secondary = Color(0xFF9AA0A6),
             tertiary = Color(0xFF4A4F55),
             brightness = DeckConfig.DAY_BRIGHTNESS,
+            backlightRaw = DeckConfig.DAY_BACKLIGHT_RAW,
             isNight = false,
         )
 
@@ -34,6 +37,7 @@ data class DeckPalette(
             secondary = Color(0xFF4A1808),
             tertiary = Color(0xFF2A0D04),
             brightness = DeckConfig.NIGHT_BRIGHTNESS,
+            backlightRaw = DeckConfig.NIGHT_BACKLIGHT_RAW,
             isNight = true,
         )
     }

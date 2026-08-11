@@ -25,10 +25,19 @@ object DeckConfig {
 
     /**
      * 夜間のウィンドウ輝度。
-     * これは OS が許す下限までしか下がらない。暗室でさらに暗くしたい場合は
-     * root でバックライトの sysfs を直接叩く必要がある（README のロードマップ参照）。
+     * これは OS が許す下限までしか下がらないので、実際の減光は下の raw 値が担う。
      */
     const val NIGHT_BRIGHTNESS = 0.01f
+
+    /**
+     * バックライトの raw 値（sysfs へ直接書く値。実機の max は 255）。
+     *
+     * ウィンドウ輝度では届かない領域まで落とすためのもの。
+     * 夜間の 1 は「暗室でほのかに光っているだけ」の状態。
+     * 昼間の値を明示的に書き戻すのは、朝になっても暗いままにしないため。
+     */
+    const val DAY_BACKLIGHT_RAW = 180
+    const val NIGHT_BACKLIGHT_RAW = 1
 
     /** 焼き付き対策の微小オフセットを進める間隔（分）。 */
     const val PIXEL_SHIFT_INTERVAL_MINUTES = 10

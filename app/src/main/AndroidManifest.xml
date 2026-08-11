@@ -1,14 +1,30 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
-    xmlns:tools="http://schemas.android.com/tools">
+    xmlns:tools="http://schemas.android.com/tools"
+    android:sharedUserId="android.uid.system">
 
     <!--
-      WRITE_SECURE_SETTINGS は通常アプリには付与されないが、development フラグを
-      持つため adb 経由で grant できる。scripts/setup-device.sh を参照。
+      この端末の ROM は AOSP の公開テスト鍵で署名されているため、同じ鍵で署名すると
+      system UID として動ける。これにより signature レベルの権限がすべて署名だけで
+      通り、adb での pm grant も root も不要になる。
+      鍵は scripts/fetch-platform-keys.sh、照合結果は README を参照。
+
+      sharedUserId は API 29 で非推奨だが targetSdk 28 では有効。この端末専用アプリ
+      なので互換性より特権を優先する。
+    -->
+
+    <!--
+      WRITE_SECURE_SETTINGS は signature|privileged|development。
+      プラットフォーム署名があれば signature で通る。署名が無い環境では
+      development フラグにより adb の pm grant でも付与できる。
     -->
     <uses-permission
         android:name="android.permission.WRITE_SECURE_SETTINGS"
         tools:ignore="ProtectedPermissions" />
+    <!-- Settings.System への書き込みは appop と別に宣言が要る。宣言が無いと canWrite() が false のまま。 -->
+    <uses-permission android:name="android.permission.WRITE_SETTINGS" />
+    <!-- Android 11 以降 NetworkInterface の列挙が制限されるため、IP は ConnectivityManager から取る。 -->
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
 
     <application

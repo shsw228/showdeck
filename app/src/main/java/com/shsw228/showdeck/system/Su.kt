@@ -6,21 +6,24 @@ import java.io.DataOutputStream
 /**
  * root シェルの薄いラッパ。libsu を入れるほどの用途がないので自前で持つ。
  *
- * root は必須ではない。無い場合は [isAvailable] が false を返すだけで、
- * 呼び出し側は機能を落として動き続ける。
+ * 実機（LineageOS 18.1 / cronos）には su バイナリが無く、`adb root` でのみ
+ * root が取れる。アプリの特権はプラットフォーム署名（system UID）で確保して
+ * いるので、これは Magisk を入れた場合のための保険という位置づけ。
  */
 object Su {
 
     private const val TAG = "ShowDeck/Su"
 
-    /** 判定は毎回プロセスを起こすので一度だけ行う。 */
+    /** 判定は毎回プロセスを起こすので一度だけ行う。IO スレッドから触ること。 */
     val isAvailable: Boolean by lazy {
         exec("id").getOrNull()?.contains("uid=0") == true
     }
 
     /**
      * root で 1 コマンド実行し、標準出力を返す。
-     * su が無い・拒否された場合は失敗を返すだけで例外は投げない。
+     *
+     * su が無いのは異常ではなく想定内なので、スタックトレースは出さない。
+     * 出すと起動のたびにログが数十行流れて、本当の問題が埋もれる。
      */
     fun exec(command: String): Result<String> = runCatching {
         val process = ProcessBuilder("su").redirectErrorStream(true).start()
@@ -32,25 +35,5 @@ object Su {
         val output = process.inputStream.bufferedReader().readText()
         process.waitFor()
         output.trim()
-    }.onFailure { Log.i(TAG, "su 実行不可: $command", it) }
-
-    /**
-     * バックライトを sysfs へ直接書く。
-     *
-     * Android の最低輝度は暗室ではまだ眩しく、ウィンドウ輝度では下限に阻まれる。
-     * ここを叩けると「ほのかに光っているだけの時計」まで到達できる。
-     * パスは機種依存なので [BACKLIGHT_PATHS] を実機の check-device.sh の出力で詰める。
-     */
-    fun writeBacklight(raw: Int): Boolean {
-        if (!isAvailable) return false
-        return BACKLIGHT_PATHS.any { path ->
-            exec("echo $raw > $path").isSuccess &&
-                exec("cat $path").getOrNull()?.trim() == raw.toString()
-        }
-    }
-
-    private val BACKLIGHT_PATHS = listOf(
-        "/sys/class/leds/lcd-backlight/brightness",
-        "/sys/class/backlight/panel0-backlight/brightness",
-    )
+    }.onFailure { Log.i(TAG, "su は使えません（${it.javaClass.simpleName}）") }
 }

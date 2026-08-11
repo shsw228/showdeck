@@ -9,13 +9,13 @@ import com.shsw228.showdeck.admin.DeviceAdmin
 /**
  * 端末側の常駐設定を「アプリが自分で」適用する層。
  *
- * adb が必要なのは初回の 2 行だけ:
+ * プラットフォーム署名（sharedUserId=android.uid.system）が効いていれば、
+ * 必要な権限はすべて署名だけで通るため adb は一切要らない。
+ * 署名が無い環境向けに、adb で以下 2 行を流すブートストラップも残してある。
  *   adb shell pm grant com.shsw228.showdeck android.permission.WRITE_SECURE_SETTINGS
  *   adb shell dpm set-device-owner com.shsw228.showdeck/.admin.AdminReceiver
  *
- * 権限さえ付いてしまえば Settings.Global / Settings.Secure はアプリから書ける。
  * 起動のたびに適用し直すので、OTA や設定リセットで飛んでも自動で復帰する。
- * この点で adb 一括セットアップより堅い。
  */
 object DeviceSetup {
 
@@ -23,24 +23,25 @@ object DeviceSetup {
 
     /**
      * いま何ができるか。設定画面と診断オーバーレイはこれを見て表示を変える。
-     * 「なぜこの機能がグレーなのか」を端末上で説明できることが重要。
+     * 「なぜこの機能が効かないのか」を端末上で説明できることが重要。
      */
     data class Capabilities(
+        val isSystemUid: Boolean,
         val canWriteSecureSettings: Boolean,
         val canWriteSystemSettings: Boolean,
         val isDeviceOwner: Boolean,
+        val canWriteBacklight: Boolean,
         val hasRoot: Boolean,
-    ) {
-        /** ウィンドウ輝度は無条件で使えるので、最低限の夜間モードは常に成立する。 */
-        val canDimBelowSystemMinimum: Boolean get() = hasRoot
-    }
+    )
 
     fun capabilities(context: Context) = Capabilities(
+        isSystemUid = isRunningAsSystem(),
         canWriteSecureSettings = context.checkSelfPermission(
             android.Manifest.permission.WRITE_SECURE_SETTINGS,
         ) == PackageManager.PERMISSION_GRANTED,
         canWriteSystemSettings = Settings.System.canWrite(context),
         isDeviceOwner = DeviceAdmin.isDeviceOwner(context),
+        canWriteBacklight = Backlight.canWriteDirectly || Su.isAvailable,
         hasRoot = Su.isAvailable,
     )
 
@@ -52,13 +53,16 @@ object DeviceSetup {
      */
     fun apply(context: Context) {
         val caps = capabilities(context)
-        Log.i(TAG, "capabilities=$caps")
+        Log.i(TAG, "capabilities=$caps backlight=${Backlight.read()}/${Backlight.max}")
 
         if (caps.canWriteSecureSettings) {
             // 7 = AC / USB / ワイヤレスのいずれかで給電中はスリープしない
             putGlobal(context, Settings.Global.STAY_ON_WHILE_PLUGGED_IN, 7)
             // 内部 API を呼ぶために隠し API の検出を警告のみに落とす
             putGlobal(context, "hidden_api_policy", 1)
+            // 没入モードに入るたび SystemUI が「全画面表示」のダイアログを被せてくる。
+            // 常時表示の端末では邪魔でしかないので既読扱いにする。
+            putSecure(context, "immersive_mode_confirmations", "confirmed")
         }
 
         if (caps.canWriteSystemSettings) {
@@ -80,6 +84,11 @@ object DeviceSetup {
     private fun putGlobal(context: Context, key: String, value: Int) {
         runCatching { Settings.Global.putInt(context.contentResolver, key, value) }
             .onFailure { Log.w(TAG, "global/$key の書き込みに失敗", it) }
+    }
+
+    private fun putSecure(context: Context, key: String, value: String) {
+        runCatching { Settings.Secure.putString(context.contentResolver, key, value) }
+            .onFailure { Log.w(TAG, "secure/$key の書き込みに失敗", it) }
     }
 
     private fun putSystem(context: Context, key: String, value: Int) {

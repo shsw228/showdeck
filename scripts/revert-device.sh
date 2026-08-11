@@ -26,8 +26,17 @@ run "cmd package install-existing com.android.systemui"
 run "pm enable com.android.systemui"
 
 step "Device Owner を解除"
-# Device Owner は端末側からは外せないため、アプリごと消すのが唯一の手段。
-run "dpm remove-active-admin $ADMIN"
+# `dpm remove-active-admin` は "Attempt to remove non-test admin" で必ず失敗する。
+# Device Owner が付いている間はアンインストールも DELETE_FAILED_INTERNAL_ERROR になる。
+# 実機で通った唯一の手順が、adb root で状態ファイルを消して再起動すること。
+if adb $( [ -n "$SERIAL" ] && echo "-s $SERIAL" ) root >/dev/null 2>&1 && sleep 2 && \
+   [ "$($ADB shell id -u 2>/dev/null | tr -d '\r')" = "0" ]; then
+  run "rm -f /data/system/device_owner_2.xml /data/system/device_policies.xml"
+  echo "  Device Owner の状態を削除しました。反映には再起動が要ります:"
+  echo "    adb reboot && adb wait-for-device && adb uninstall $PKG"
+else
+  echo "  adb root が通りませんでした。userdebug ビルドであることを確認してください。" >&2
+fi
 
 step "電源まわりを既定に戻す"
 run "settings put global stay_on_while_plugged_in 0"
