@@ -28,6 +28,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.unit.dp
 import com.shsw228.showdeck.DeckUiState
+import com.shsw228.showdeck.garbage.GarbageRule
 import com.shsw228.showdeck.garbage.GarbageSchedule
 import com.shsw228.showdeck.ui.theme.DeckMetrics
 import com.shsw228.showdeck.ui.theme.DeckPalette
@@ -84,6 +85,7 @@ fun InfoRail(
                     nowState = nowState,
                     state = state,
                     palette = palette,
+                    garbageRules = garbageRules,
                     onWeatherClick = onWeatherClick,
                 )
                 1 -> PomodoroPage(
@@ -124,12 +126,21 @@ fun InfoRail(
     }
 }
 
-/** 1 ページ目。日付と天気。 */
+/**
+ * 1 ページ目。上から日付、天気、ごみ。
+ *
+ * 中央寄せではなく上下に散らして高さを使い切る。中央に固めると、
+ * 上下に帯が余って浮いて見えた。
+ *
+ * ごみは今日か明日のときだけここに出す。**朝に一目で見えないと意味がない**が、
+ * 常時出すと情報が増えて時計が読みにくくなる。
+ */
 @Composable
 private fun DateAndWeatherPage(
     nowState: State<LocalDateTime>,
     state: DeckUiState,
     palette: DeckPalette,
+    garbageRules: List<GarbageRule>,
     onWeatherClick: () -> Unit,
 ) {
     val dateText by remember(nowState) {
@@ -138,10 +149,17 @@ private fun DateAndWeatherPage(
     val weekdayText by remember(nowState) {
         derivedStateOf { WEEKDAY_FORMAT.format(nowState.value) }
     }
+    val today by remember(nowState) {
+        derivedStateOf { nowState.value.toLocalDate() }
+    }
+    // 明後日以降は出さないので、探索も 2 日で足りる。
+    val imminentGarbage = remember(garbageRules, today) {
+        GarbageSchedule.nextCollection(garbageRules, today, searchDays = 2)
+    }
 
     Column(
         modifier = Modifier.fillMaxSize(),
-        verticalArrangement = Arrangement.Center,
+        verticalArrangement = Arrangement.SpaceBetween,
     ) {
         // 日付と曜日は同じ行。別行にすると天気が入る高さが足りなくなる。
         Row(verticalAlignment = Alignment.Bottom) {
@@ -163,12 +181,17 @@ private fun DateAndWeatherPage(
         }
 
         state.weather?.let { weather ->
-            Spacer(Modifier.height(DeckMetrics.Gap4))
             WeatherBlock(
                 weather = weather,
                 palette = palette,
                 onClick = onWeatherClick,
             )
+        }
+
+        // 出すものが無い日は場所ごと空ける。空の枠を残すと、
+        // 何かが出るはずの場所に見えて落ち着かない。
+        if (imminentGarbage != null) {
+            GarbageNotice(next = imminentGarbage, today = today, palette = palette)
         }
     }
 }

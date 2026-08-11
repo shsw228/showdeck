@@ -96,6 +96,31 @@ private fun ClockDay() {
     )
 }
 
+/**
+ * ごみが今日ある日。
+ *
+ * 1 ページ目に一行だけ出る。朝に一目で見えることが要件なので、
+ * スワイプせずに読めているかをここで見る。
+ */
+@PreviewTest
+@Preview(name = "昼_ごみあり", device = DEVICE_SPEC)
+@Composable
+private fun ClockDayWithGarbage() {
+    ClockScreen(
+        nowState = nowState,
+        secondsProgress = secondsProgress,
+        state = baseState.copy(
+            settings = DeckSettings.Defaults.copy(garbageRules = "燃えるごみ: 火,金\n資源: 水"),
+        ),
+        palette = DeckPalette.Day,
+        onWeatherClick = {},
+        onPomodoroStart = {},
+        onPomodoroPause = {},
+        onPomodoroSkip = {},
+        onPomodoroStop = {},
+    )
+}
+
 /** 夜間は情報レールを畳んで時計だけになる。畳めているかを見る。 */
 @PreviewTest
 @Preview(name = "夜間", device = DEVICE_SPEC)
