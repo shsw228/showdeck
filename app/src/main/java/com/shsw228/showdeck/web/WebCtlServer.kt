@@ -138,7 +138,7 @@ class WebCtlServer(
         session.parseBody(HashMap())
         val minutes = session.parms.int("minutes", 5).coerceIn(1, 24 * 60)
         val label = session.parms["label"]?.trim().orEmpty()
-        viewModel.startTimer(minutes, label)
+        viewModel.addTimer(minutes, label)
         Log.i(TAG, "タイマー開始: $minutes 分 $label")
         return redirectHome()
     }
@@ -208,11 +208,16 @@ private fun timeOfDay(at: java.time.LocalDateTime): String =
 
 private fun renderIndex(state: DeckUiState): String {
     val s: DeckSettings = state.settings
+    // 画面と同じ一覧（`state.timers`）を読む。旧 `state.timer` は発報の
+    // 受け皿として残っているだけで、ここに出すと Web と端末で中身が食い違う。
     val timerStatus = when {
         state.firing != null -> "🔔 ${state.firing.label} が鳴っています"
-        state.timer != null ->
-            "${state.timer.label} — ${timeOfDay(state.timer.endsAt)} に鳴ります"
-        else -> "動作中のタイマーはありません"
+        state.timers.isEmpty() -> "動作中のタイマーはありません"
+        else -> state.timers.joinToString("、") { t ->
+            val remaining = t.remaining(java.time.LocalDateTime.now())
+            "${t.label} — 残り %d:%02d".format(remaining.toMinutes(), remaining.seconds % 60) +
+                if (t.isRunning) "" else "（停止中）"
+        }
     }
 
     val pomodoroStatus = buildString {

@@ -50,6 +50,9 @@ data class DeckUiState(
     /** Calendar 画面で選んでいる予定。null なら一覧の先頭。 */
     val selectedEventId: String? = null,
 
+    /** 振動子があるか。無いなら「振動だけ」を選ばせない。 */
+    val hasVibrator: Boolean = false,
+
     /** 音量を操作した直後だけ入る。数秒で消える。 */
     val volume: VolumeLevel? = null,
 

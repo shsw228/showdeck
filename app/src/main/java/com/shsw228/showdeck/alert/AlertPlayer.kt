@@ -59,7 +59,9 @@ class AlertPlayer(private val context: Context) {
         // 振動は常に出す。音を出さない経路でも「鳴った」ことは伝える。
         vibrate()
 
-        if (hapticOnly || isMuted()) {
+        // 振動子が無い端末では黙らない。振動も音も無いアラームは、
+        // 発報しなかったのと同じ。画面表示だけが残る状態は作らない。
+        if ((hapticOnly || isMuted()) && hasVibrator) {
             Log.i(TAG, "音は出さない（設定 or マナーモード）")
             return
         }
@@ -123,6 +125,14 @@ class AlertPlayer(private val context: Context) {
     }
 
     private fun vibrator(): Vibrator? = context.getSystemService(Vibrator::class.java)
+
+    /**
+     * 振動子があるか。
+     *
+     * 無い端末で「振動だけ」を選ばせると、アラームが**無音で何も起きない**
+     * ものになる。設定側で選べないようにするために公開している。
+     */
+    val hasVibrator: Boolean get() = vibrator()?.hasVibrator() == true
 
     fun release() {
         stop()

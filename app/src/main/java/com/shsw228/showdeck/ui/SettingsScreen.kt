@@ -73,7 +73,7 @@ fun SettingsScreen(
             DisplaySection(state.settings, palette, actions)
             BacklightSection(state, palette, actions)
             FocusSection(state.settings, palette, actions)
-            ScheduleSection(state.settings, palette, actions)
+            ScheduleSection(state.settings, state.hasVibrator, palette, actions)
         }
 
         StatusPanel(
@@ -228,6 +228,7 @@ private fun FocusSection(
 @Composable
 private fun ScheduleSection(
     settings: DeckSettings,
+    hasVibrator: Boolean,
     palette: DeckPalette,
     actions: DeckActions,
 ) {
@@ -273,7 +274,29 @@ private fun ScheduleSection(
         Gap(DeckMetrics.Space2)
         // 端末のマナーモードは設定に関係なく尊重する。これは鳴らせる状態でも
         // 鳴らさないための設定。
-        Toggle("Vibrate only", settings.alertHapticOnly, palette) { actions.setAlertHapticOnly(it) }
+        //
+        // 振動子が無い端末では選ばせない。選べると「無音で何も起きない
+        // アラーム」になる。
+        if (hasVibrator) {
+            Toggle("Vibrate only", settings.alertHapticOnly, palette) {
+                actions.setAlertHapticOnly(it)
+            }
+        } else {
+            Row(
+                modifier = Modifier.fillMaxWidth().heightIn(min = DeckMetrics.ButtonHeight),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                BasicText(
+                    text = "Vibrate only",
+                    style = DeckType.BodySm.copy(color = palette.ink3),
+                    modifier = Modifier.weight(1f),
+                )
+                BasicText(
+                    text = "no vibrator",
+                    style = DeckType.Meta.copy(color = palette.ink3),
+                )
+            }
+        }
         Gap(DeckMetrics.Space2)
         Stepper(
             title = "Alarm at",

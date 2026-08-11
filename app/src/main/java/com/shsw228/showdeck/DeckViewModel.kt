@@ -92,6 +92,7 @@ class DeckViewModel(
     val canControlBacklight: Boolean get() = backlight.canControl
 
     init {
+        _uiState.update { it.copy(hasVibrator = alertPlayer.hasVibrator) }
         observeSettings()
         startClock()
         applyDeviceSetup()
@@ -118,8 +119,15 @@ class DeckViewModel(
 
     // --- Web 設定画面からの入力 ---
 
-    fun startTimer(minutes: Int, label: String) {
-        scheduler.startTimer(minutes, label, clock())
+    /**
+     * その場で発報させる。
+     *
+     * 0 分のタイマーを置いて次の tick で鳴らす、という間接的な作りになっている
+     * （[AlertScheduler] が発報の判定を持っているため）。**タイマーを増やす口では
+     * ない。** カウントダウンを足すのは [addTimer]。
+     */
+    private fun raiseAlert(label: String) {
+        scheduler.startTimer(0, label, clock())
         publishAlertState()
     }
 
@@ -255,8 +263,7 @@ class DeckViewModel(
         val (next, done) = Countdowns.fire(_uiState.value.timers, clock())
         if (done == null) return
         _uiState.update { it.copy(timers = next) }
-        scheduler.startTimer(0, done.label, clock())
-        publishAlertState()
+        raiseAlert(done.label)
     }
 
     /** 定期的に取り直す。設定が変わったときの取得は [observeSettings] 側。 */
