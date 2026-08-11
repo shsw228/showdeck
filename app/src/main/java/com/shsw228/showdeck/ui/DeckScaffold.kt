@@ -48,6 +48,7 @@ enum class DeckDestination(val title: String, val icon: ImageVector) {
     CALENDAR("Calendar", DeckIcons.Calendar),
     FOCUS("Focus", DeckIcons.Focus),
     TIMERS("Timers", DeckIcons.Timers),
+    SETTINGS("Settings", DeckIcons.Settings),
 }
 
 /**

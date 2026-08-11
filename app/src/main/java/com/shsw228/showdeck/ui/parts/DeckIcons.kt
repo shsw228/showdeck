@@ -11,6 +11,7 @@ import androidx.compose.material.icons.outlined.NightsStay
 import androidx.compose.material.icons.outlined.WbCloudy
 import androidx.compose.material.icons.outlined.Thunderstorm
 import androidx.compose.material.icons.outlined.Timer
+import androidx.compose.material.icons.outlined.Tune
 import androidx.compose.material.icons.outlined.TrackChanges
 import androidx.compose.material.icons.outlined.Umbrella
 import androidx.compose.material.icons.outlined.WbSunny
@@ -29,6 +30,7 @@ object DeckIcons {
     val Focus = Icons.Outlined.TrackChanges
     val Timers = Icons.Outlined.Timer
     val Back = Icons.Outlined.ArrowBack
+    val Settings = Icons.Outlined.Tune
 
     /** 天気。夜は太陽を出さない（同じ「晴れ」でも昼夜で期待が違う）。 */
     fun weather(kind: WeatherIconKind): ImageVector = when (kind) {

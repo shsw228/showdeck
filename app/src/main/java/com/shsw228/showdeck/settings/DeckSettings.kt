@@ -76,6 +76,12 @@ data class DeckSettings(
 
     /** 時計に秒を出すか。出さないときは 12 時間表記なら AM/PM を出す。 */
     val showSeconds: Boolean,
+
+    /**
+     * 他のアプリに移ったあと、何秒でダッシュボードへ戻すか。
+     * 0 で戻さない。[com.shsw228.showdeck.system.HomeWatchdog] が使う。
+     */
+    val returnAfterSeconds: Int,
 ) {
     /** 空行と前後の空白を落とした購読先。 */
     val icsUrlList: List<String>
@@ -129,6 +135,7 @@ data class DeckSettings(
             homeLayout = DeckConfig.HOME_LAYOUT,
             clock24 = DeckConfig.CLOCK_24H,
             showSeconds = DeckConfig.SHOW_SECONDS,
+            returnAfterSeconds = DeckConfig.RETURN_AFTER_SECONDS,
         )
     }
 }

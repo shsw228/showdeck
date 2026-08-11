@@ -32,11 +32,12 @@ import com.shsw228.showdeck.admin.DeviceAdmin
 import com.shsw228.showdeck.alert.AlertPlayer
 import com.shsw228.showdeck.settings.SettingsStore
 import com.shsw228.showdeck.system.DeviceSetup
+import com.shsw228.showdeck.system.HomeWatchdog
+import com.shsw228.showdeck.system.openAndroidSettings
 import com.shsw228.showdeck.system.lightSensorFlow
 import com.shsw228.showdeck.system.localIpAddress
 import com.shsw228.showdeck.ui.AlertOverlay
 import com.shsw228.showdeck.ui.CalendarScreen
-import com.shsw228.showdeck.ui.ControlOverlay
 import com.shsw228.showdeck.ui.DeckActions
 import com.shsw228.showdeck.ui.DeckDestination
 import com.shsw228.showdeck.ui.DeckScaffold
@@ -45,6 +46,7 @@ import com.shsw228.showdeck.ui.HomeLayout
 import com.shsw228.showdeck.ui.HomeScreen
 import com.shsw228.showdeck.ui.NavStyle
 import com.shsw228.showdeck.ui.TimersScreen
+import com.shsw228.showdeck.ui.SettingsScreen
 import com.shsw228.showdeck.ui.WeatherScreen
 
 import com.shsw228.showdeck.ui.theme.DeckTheme
@@ -65,6 +67,9 @@ private const val TAG = "ShowDeck"
  * 明るい側では変化が分からず、暗い側では一気に飛ぶ。倍率で動かして、
  * 1 タップの体感を揃える。
  */
+/** 0 時からの分を 1 日の中に丸める。増減で日をまたいでも壊れないように。 */
+private fun wrapDay(minutes: Int): Int = ((minutes % 1440) + 1440) % 1440
+
 private fun stepBacklight(current: Int, delta: Int): Int {
     val stepped = if (delta > 0) {
         (current * 3 + 1) / 2
@@ -135,9 +140,6 @@ class MainActivity : ComponentActivity() {
         // この階層が毎秒再コンポーズされる。
         val nowState = viewModel.now.collectAsStateWithLifecycle()
 
-        // 操作パネルを開いているかは画面だけの都合なので、ここで持つ。
-        var showControls by remember { mutableStateOf(false) }
-
         // どの画面にいるかも同じ。再起動したら Home に戻ってよい
         // （常駐の据え置き機で、前回どこを見ていたかを覚えていても嬉しくない）。
         var destination by remember { mutableStateOf(DeckDestination.HOME) }
@@ -155,7 +157,6 @@ class MainActivity : ComponentActivity() {
                 },
                 resetPomodoro = { viewModel.stopPomodoro() },
                 skipPomodoro = { viewModel.skipPomodoro() },
-                setPomodoroWorkMinutes = { viewModel.setPomodoroWorkMinutes(it) },
                 toggleTimer = { viewModel.toggleTimer(it) },
                 resetTimer = { viewModel.resetTimer(it) },
                 addTimer = { viewModel.addTimer(it) },
@@ -165,6 +166,70 @@ class MainActivity : ComponentActivity() {
                     viewModel.startFocusFor(event.title)
                     destination = DeckDestination.FOCUS
                 },
+
+                setNavStyle = { viewModel.updateSettingsOnDevice { s -> s.copy(navStyle = it) } },
+                setHomeLayout = { viewModel.updateSettingsOnDevice { s -> s.copy(homeLayout = it) } },
+                setClock24 = { viewModel.updateSettingsOnDevice { s -> s.copy(clock24 = it) } },
+                setShowSeconds = { viewModel.updateSettingsOnDevice { s -> s.copy(showSeconds = it) } },
+
+                adjustBrightness = { delta ->
+                    viewModel.updateSettingsOnDevice { s ->
+                        // いま効いている側だけを動かす。押した瞬間に効かないと
+                        // 明るさ調整は用を成さない。
+                        if (viewModel.uiState.value.mode == DeckMode.DAY) {
+                            s.copy(dayBacklight = stepBacklight(s.dayBacklight, delta))
+                        } else {
+                            s.copy(nightBacklight = stepBacklight(s.nightBacklight, delta))
+                        }
+                    }
+                },
+
+                setPomodoroWorkMinutes = { viewModel.setPomodoroWorkMinutes(it) },
+                setPomodoroShortBreak = {
+                    viewModel.updateSettingsOnDevice { s ->
+                        s.copy(pomodoroShortBreakMinutes = it.coerceIn(1, 60))
+                    }
+                },
+                setPomodoroLongBreak = {
+                    viewModel.updateSettingsOnDevice { s ->
+                        s.copy(pomodoroLongBreakMinutes = it.coerceIn(1, 120))
+                    }
+                },
+                setPomodoroRounds = {
+                    viewModel.updateSettingsOnDevice { s ->
+                        s.copy(pomodoroRoundsBeforeLongBreak = it.coerceIn(1, 12))
+                    }
+                },
+                setPomodoroAutoWork = {
+                    viewModel.updateSettingsOnDevice { s -> s.copy(pomodoroAutoStartWork = it) }
+                },
+                setPomodoroAutoBreak = {
+                    viewModel.updateSettingsOnDevice { s -> s.copy(pomodoroAutoStartBreak = it) }
+                },
+
+                setNightStart = {
+                    viewModel.updateSettingsOnDevice { s -> s.copy(nightStartMinutes = wrapDay(it)) }
+                },
+                setNightEnd = {
+                    viewModel.updateSettingsOnDevice { s -> s.copy(nightEndMinutes = wrapDay(it)) }
+                },
+                setBlackout = {
+                    viewModel.updateSettingsOnDevice { s -> s.copy(blackoutEnabled = it) }
+                },
+                setBlackoutStart = {
+                    viewModel.updateSettingsOnDevice { s -> s.copy(blackoutStartMinutes = wrapDay(it)) }
+                },
+                setBlackoutEnd = {
+                    viewModel.updateSettingsOnDevice { s -> s.copy(blackoutEndMinutes = wrapDay(it)) }
+                },
+                setAlarmEnabled = {
+                    viewModel.updateSettingsOnDevice { s -> s.copy(alarmEnabled = it) }
+                },
+                setAlarmTime = {
+                    viewModel.updateSettingsOnDevice { s -> s.copy(alarmMinutes = wrapDay(it)) }
+                },
+
+                openAndroidSettings = { openAndroidSettings(this@MainActivity) },
             )
         }
 
@@ -174,14 +239,9 @@ class MainActivity : ComponentActivity() {
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .pointerInput(Unit) {
-                    detectTapGestures(
-                        // 消灯中も画面は点いたままなのでタップがそのまま届く。
-                        // goToSleep していたらここには来ない。
-                        onTap = { viewModel.onTap() },
-                        onLongPress = { showControls = true },
-                    )
-                },
+                // 消灯中も画面は点いたままなのでタップがそのまま届く。
+                // 長押しの操作パネルは廃止した（設定は Settings タブにある）。
+                .pointerInput(Unit) { detectTapGestures(onTap = { viewModel.onTap() }) },
         ) {
             DeckScaffold(
                 destination = destination,
@@ -250,43 +310,17 @@ class MainActivity : ComponentActivity() {
                         palette = palette,
                         actions = actions,
                     )
+
+                    DeckDestination.SETTINGS -> SettingsScreen(
+                        state = state,
+                        palette = palette,
+                        webPort = DeckConfig.WEB_PORT,
+                        actions = actions,
+                    )
                     }
                 }
             }
 
-            if (showControls) {
-                ControlOverlay(
-                    state = state,
-                    palette = palette,
-
-                    webPort = DeckConfig.WEB_PORT,
-                    // 明るさは押した瞬間に効いてほしいので、いま効いている側だけを動かす。
-                    onAdjustBrightness = { delta ->
-                        viewModel.updateSettingsOnDevice { settings ->
-                            if (state.mode == DeckMode.DAY) {
-                                settings.copy(
-                                    dayBacklight = stepBacklight(settings.dayBacklight, delta),
-                                )
-                            } else {
-                                settings.copy(
-                                    nightBacklight = stepBacklight(settings.nightBacklight, delta),
-                                )
-                            }
-                        }
-                    },
-                    onToggleBlackout = {
-                        viewModel.updateSettingsOnDevice {
-                            it.copy(blackoutEnabled = !it.blackoutEnabled)
-                        }
-                    },
-                    onToggleAlarm = {
-                        viewModel.updateSettingsOnDevice {
-                            it.copy(alarmEnabled = !it.alarmEnabled)
-                        }
-                    },
-                    onDismiss = { showControls = false },
-                )
-            }
 
             // 発報中はすべての上に出す。診断や予報より優先度が高い。
             state.firing?.let { alert ->
@@ -317,6 +351,22 @@ class MainActivity : ComponentActivity() {
     override fun onDestroy() {
         webServer?.stop()
         super.onDestroy()
+    }
+
+    /**
+     * 他のアプリに移ったら引き戻す予約を入れる。
+     *
+     * Android の設定を開いたまま放置されると、翌朝までダッシュボードが出ない。
+     * 戻ってきたら [onResume] で取り消す。
+     */
+    override fun onPause() {
+        super.onPause()
+        HomeWatchdog.arm(applicationContext, viewModel.uiState.value.settings.returnAfterSeconds)
+    }
+
+    override fun onResume() {
+        super.onResume()
+        HomeWatchdog.disarm(applicationContext)
     }
 
     override fun onWindowFocusChanged(hasFocus: Boolean) {

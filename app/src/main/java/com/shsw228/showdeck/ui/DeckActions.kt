@@ -6,9 +6,8 @@ import java.time.LocalDate
 /**
  * 画面から呼べる操作をまとめたもの。
  *
- * 画面が増えるたびに引数が増えていくのを避けるために束ねてある。
- * Home だけで 5 つの行き先と 4 つのポモドーロ操作を受け取ることになり、
- * 引数の並びを間違えても型が同じだと気づけない。
+ * 画面ごとに引数を並べると、Home だけで 5 つの行き先と 4 つのポモドーロ操作を
+ * 受け取ることになる。並びを間違えても型が同じだと気づけない。
  */
 data class DeckActions(
     val navigate: (DeckDestination) -> Unit = {},
@@ -16,8 +15,6 @@ data class DeckActions(
     val togglePomodoro: () -> Unit = {},
     val resetPomodoro: () -> Unit = {},
     val skipPomodoro: () -> Unit = {},
-    /** 作業時間を分で指定し直す。休憩の長さは設定の比率のまま。 */
-    val setPomodoroWorkMinutes: (Int) -> Unit = {},
 
     val toggleTimer: (Long) -> Unit = {},
     val resetTimer: (Long) -> Unit = {},
@@ -27,4 +24,40 @@ data class DeckActions(
     val selectDay: (LocalDate) -> Unit = {},
     /** 選んだ予定の名前でポモドーロを始める。 */
     val startFocusFor: (CalendarEvent) -> Unit = {},
+
+    // --- 設定 ---
+    //
+    // 項目ごとに口を分ける。`(DeckSettings) -> DeckSettings` を 1 つ渡す形だと
+    // 設定画面が設定の形を知ることになり、どの項目を触ったのかも追えない。
+
+    val setNavStyle: (String) -> Unit = {},
+    val setHomeLayout: (String) -> Unit = {},
+    val setClock24: (Boolean) -> Unit = {},
+    val setShowSeconds: (Boolean) -> Unit = {},
+
+    /** いま効いている側（昼／夜）のバックライトを 1 段動かす。 */
+    val adjustBrightness: (Int) -> Unit = {},
+
+    val setPomodoroWorkMinutes: (Int) -> Unit = {},
+    val setPomodoroShortBreak: (Int) -> Unit = {},
+    val setPomodoroLongBreak: (Int) -> Unit = {},
+    val setPomodoroRounds: (Int) -> Unit = {},
+    val setPomodoroAutoWork: (Boolean) -> Unit = {},
+    val setPomodoroAutoBreak: (Boolean) -> Unit = {},
+
+    val setNightStart: (Int) -> Unit = {},
+    val setNightEnd: (Int) -> Unit = {},
+    val setBlackout: (Boolean) -> Unit = {},
+    val setBlackoutStart: (Int) -> Unit = {},
+    val setBlackoutEnd: (Int) -> Unit = {},
+    val setAlarmEnabled: (Boolean) -> Unit = {},
+    val setAlarmTime: (Int) -> Unit = {},
+
+    /**
+     * Android の設定を開く。
+     *
+     * この端末はランチャーを置き換えていて、ステータスバーも通知シェードも
+     * 止めてある。**ここが Android の設定への唯一の入口。**
+     */
+    val openAndroidSettings: () -> Unit = {},
 )

@@ -113,6 +113,15 @@ object DeckConfig {
      */
     const val SHOW_SECONDS = true
 
+    /**
+     * 他のアプリから戻すまでの秒数。
+     *
+     * Android の設定を開いたまま放置されると、翌朝までダッシュボードが
+     * 出ない。長すぎると意味が無く、短すぎると設定を触っている最中に
+     * 引き戻される。3 分は「一通り見て閉じる」には足り、放置には短い。
+     */
+    const val RETURN_AFTER_SECONDS = 180
+
     /** カレンダーを取りに行く間隔。 */
     const val CALENDAR_REFRESH_MINUTES = 15L
 

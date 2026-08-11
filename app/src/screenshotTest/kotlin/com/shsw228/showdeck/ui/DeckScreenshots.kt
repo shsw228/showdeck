@@ -288,18 +288,14 @@ private fun TimersOverflow() = Deck(DeckDestination.TIMERS) {
 // --- オーバーレイ ---
 
 @PreviewTest
-@Preview(name = "操作パネル", device = DEVICE_SPEC)
+@Preview(name = "Settings", device = DEVICE_SPEC)
 @Composable
-private fun Controls() {
-    ControlOverlay(
+private fun Settings() = Deck(DeckDestination.SETTINGS) {
+    SettingsScreen(
         state = baseState,
         palette = DeckPalette.Day,
-
         webPort = 8080,
-        onAdjustBrightness = {},
-        onToggleBlackout = {},
-        onToggleAlarm = {},
-        onDismiss = {},
+        actions = DeckActions(),
     )
 }
 
