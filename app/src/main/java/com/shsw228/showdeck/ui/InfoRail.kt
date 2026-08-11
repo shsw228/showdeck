@@ -129,8 +129,12 @@ fun InfoRail(
 /**
  * 1 ページ目。上から日付、天気、ごみ。
  *
- * 中央寄せではなく上下に散らして高さを使い切る。中央に固めると、
- * 上下に帯が余って浮いて見えた。
+ * **1 つの塊として縦中央に置く。** 端に散らして高さを埋めようとしたら、
+ * 日付が区切り線の上に、ごみが線の下にはみ出して、線が何も区切らなくなった。
+ * 時計と重心が揃わず、3 つの独立した物が浮いているように見える。
+ *
+ * 高さが余ることは問題ではない。5.5 インチを 3m から読むには、
+ * 主役の周りが空いていることのほうが効く。
  *
  * ごみは今日か明日のときだけここに出す。**朝に一目で見えないと意味がない**が、
  * 常時出すと情報が増えて時計が読みにくくなる。
@@ -159,7 +163,7 @@ private fun DateAndWeatherPage(
 
     Column(
         modifier = Modifier.fillMaxSize(),
-        verticalArrangement = Arrangement.SpaceBetween,
+        verticalArrangement = Arrangement.Center,
     ) {
         // 日付と曜日は同じ行。別行にすると天気が入る高さが足りなくなる。
         Row(verticalAlignment = Alignment.Bottom) {
@@ -181,6 +185,7 @@ private fun DateAndWeatherPage(
         }
 
         state.weather?.let { weather ->
+            Spacer(Modifier.height(DeckMetrics.Gap4))
             WeatherBlock(
                 weather = weather,
                 palette = palette,
@@ -191,6 +196,7 @@ private fun DateAndWeatherPage(
         // 出すものが無い日は場所ごと空ける。空の枠を残すと、
         // 何かが出るはずの場所に見えて落ち着かない。
         if (imminentGarbage != null) {
+            Spacer(Modifier.height(DeckMetrics.Gap4))
             GarbageNotice(next = imminentGarbage, today = today, palette = palette)
         }
     }

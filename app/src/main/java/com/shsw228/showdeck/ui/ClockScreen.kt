@@ -106,9 +106,12 @@ fun ClockScreen(
                 // 夜間は情報量を削って時計だけにする。暗い部屋で読むものは無い。
                 if (!palette.minimal) {
                     Spacer(Modifier.width(DeckMetrics.Gap6))
+                    // 内容の高さいっぱいに引く。以前は 0.72 の中央寄せで、
+                    // 日付が線の上に、ごみが線の下にはみ出していた。
+                    // 何も区切っていない線は、ただの飾りとして浮く。
                     Box(
                         Modifier
-                            .fillMaxHeight(0.72f)
+                            .fillMaxHeight()
                             .width(1.dp)
                             .background(palette.tertiary),
                     )
@@ -129,9 +132,11 @@ fun ClockScreen(
             }
 
             // 秒は画面幅いっぱいの線で表す。下端まで使うので、余っていた帯が埋まる。
-            Spacer(Modifier.height(DeckMetrics.Gap4))
+            // 上に広く空けるのは、内容の一部ではなく画面の縁だと見せるため。
+            // 詰めるとごみの行とくっついて、そちらの続きに見えた。
+            Spacer(Modifier.height(DeckMetrics.Gap6))
             SecondsLine(progress = secondsProgress, palette = palette)
-            Spacer(Modifier.height(DeckMetrics.Gap4))
+            Spacer(Modifier.height(DeckMetrics.Gap3))
         }
     }
 }
@@ -169,8 +174,14 @@ private fun ClockPane(
     }
 }
 
-/** `HH:mm` を等幅数字で組んだときの、フォントサイズに対する横幅の比。 */
-private const val CLOCK_WIDTH_EM = 2.65f
+/**
+ * `HH:mm` を等幅数字で組んだときの、フォントサイズに対する横幅の比。
+ *
+ * 実機のスクリーンショットを測って求めた値。当てずっぽうで 2.65 を置いていたら、
+ * 文字がペインより 50dp 細くなり、時計の右に死んだ空間ができていた。
+ * 実測は 2.34 で、わずかに余裕を持たせてある。
+ */
+private const val CLOCK_WIDTH_EM = 2.38f
 
 /**
  * 焼き付き対策の微小オフセット。
