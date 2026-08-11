@@ -59,7 +59,7 @@ object DeckConfig {
      */
     const val WEATHER_LAT = 35.7817
     const val WEATHER_LON = 139.6059
-    const val WEATHER_PLACE_NAME = "和光市"
+    const val WEATHER_PLACE_NAME = "Wako"
 
     /**
      * 天気の取得間隔。

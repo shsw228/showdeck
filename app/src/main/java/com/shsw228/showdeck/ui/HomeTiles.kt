@@ -215,11 +215,17 @@ private fun AgendaRow(event: CalendarEvent, now: LocalDateTime, palette: DeckPal
 /** 「あと 2 時間」のチップ。1 時間以内だけ色を付ける。 */
 @Composable
 fun RelativeChip(event: CalendarEvent, now: LocalDateTime, palette: DeckPalette) {
+    // 終日予定には出さない。開始が深夜 0 時なので日中は必ず「終了」になる。
+    // 時刻の欄に「All day」と出ているので、ここで足すものが無い。
+    if (event.allDay) return
+
     val minutes = Duration.between(now, event.start).toMinutes()
     val soon = minutes in 0..60
     val text = when {
-        minutes < 0 -> "done"
-        minutes < 60 -> "in ${minutes} m"
+        // 終わったかは**終了時刻**で見る。開始を過ぎただけの予定はまだ続いている。
+        event.end.isBefore(now) -> "done"
+        minutes < 0 -> "now"
+        minutes < 60 -> "in $minutes m"
         else -> "in ${minutes / 60} h"
     }
     Box(
