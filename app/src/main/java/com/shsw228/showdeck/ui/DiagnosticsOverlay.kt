@@ -56,12 +56,25 @@ fun DiagnosticsOverlay(
         Capability("バックライト直書き（OS 下限を超える減光）", capabilities.canWriteBacklight)
         Capability("root (su)", capabilities.hasRoot)
 
-        Spacer(Modifier.height(12.dp))
+        Spacer(Modifier.height(16.dp))
+
+        // 設定は端末上ではなく PC のブラウザで行う。ここが唯一の入口の案内なので、
+        // そのまま打ち込めるよう **ポートまで含めた URL** を出す。
+        // IP だけ出していた時期があり、ポートが分からず開けなかった。
         BasicText(
-            text = "IP: ${ipAddress ?: "取得できず"}",
-            style = TextStyle(color = Color(0xFF9AA0A6), fontSize = 14.sp, fontFamily = FontFamily.Monospace),
+            text = "設定画面",
+            style = TextStyle(color = Color(0xFF6B7075), fontSize = 12.sp),
         )
-        Spacer(Modifier.height(12.dp))
+        BasicText(
+            text = ipAddress?.let { "http://$it:$webPort" } ?: "IP を取得できません",
+            style = TextStyle(
+                color = Color(0xFFF2EFE6),
+                fontSize = 18.sp,
+                fontFamily = FontFamily.Monospace,
+            ),
+        )
+
+        Spacer(Modifier.height(14.dp))
         BasicText(
             text = "タップで閉じる",
             style = TextStyle(color = Color(0xFF4A4F55), fontSize = 12.sp),

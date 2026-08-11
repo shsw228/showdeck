@@ -33,7 +33,7 @@ Android 化した Echo Show 5 第2世代（`cronos`）向けの常駐ダッシ�
 - root コマンドは `Su` 経由に集約する。`Runtime.exec` を各所に散らさない
 - **Device Owner が付いているとアンインストールできない。** `dpm remove-active-admin` は失敗する。`adb root` で `/data/system/device_owner_2.xml` と `device_policies.xml` を消して再起動するのが唯一の手順
 - **`am force-stop` は効かない。** system UID で動いているため無視される。再起動させるには `adb root` してから `kill -9 $(adb shell pidof com.shsw228.showdeck)`。ランチャーなので system_server が即座に起動し直す
-- **コード編集に `python3` の `str.replace` を使わない。** 一致しなくても無言で成功するため、修正したつもりで実機を測り続ける事故が起きた。当たらなければエラーになる手段を使う
+- **このリポジトリのファイルを `python3` や `sed` のスクリプトで書き換えない。** 一致しなくても無言で成功するため、直したつもりで実機を測り続ける事故が繰り返し起きた（照度のエッジ検出、ログの文字列展開、診断画面の URL）。編集は必ず、当たらなければエラーになる手段で行う
 
 ## 外部データの扱い
 
