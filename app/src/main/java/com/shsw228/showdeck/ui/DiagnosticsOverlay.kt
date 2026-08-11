@@ -26,12 +26,13 @@ import com.shsw228.showdeck.system.DeviceSetup
  * 端末の前で即座に確認できるようにする。据え置き機は Mac の前に持ってくるのが面倒なので、
  * 画面上で状態が読めることの価値が大きい。
  *
- * 設定変更 UI はここではなく、設定の永続化層と一緒に入れる（ロードマップ 3）。
+ * 設定の変更は端末上ではなく、ここに表示される URL を PC で開いて行う。
  */
 @Composable
 fun DiagnosticsOverlay(
     capabilities: DeviceSetup.Capabilities,
     ipAddress: String?,
+    webPort: Int,
     onDismiss: () -> Unit,
 ) {
     Column(

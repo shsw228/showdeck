@@ -108,6 +108,12 @@ dependencies {
     implementation(libs.androidx.compose.ui.tooling.preview)
     debugImplementation(libs.androidx.compose.ui.tooling)
 
+    implementation(libs.androidx.datastore.preferences)
+
+    // 端末内 HTTP サーバ。5.5 インチで設定を触らせないための要。
+    // 自前実装だと HTTP パースのバグを抱え込むので、小さくて枯れた実装を借りる。
+    implementation(libs.nanohttpd)
+
     // material3 は意図的に入れていない。1GB 機なので依存とメモリを削り、
     // 必要な描画は foundation だけで組む。
 

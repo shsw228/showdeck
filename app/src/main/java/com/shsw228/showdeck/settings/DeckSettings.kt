@@ -1,0 +1,64 @@
+package com.shsw228.showdeck.settings
+
+import com.shsw228.showdeck.DeckConfig
+import java.time.LocalTime
+
+/**
+ * 実行時に変えられる設定。既定値は [DeckConfig] が持つ。
+ *
+ * 時刻は「0 時からの分」で保存する。DataStore に入れやすく、
+ * Web の `<input type="time">` とも往復しやすい。
+ */
+data class DeckSettings(
+    /** 夜間モード（減光＋赤単色）の時間帯。 */
+    val nightStartMinutes: Int,
+    val nightEndMinutes: Int,
+
+    /** バックライトの raw 値（0..255）。 */
+    val dayBacklight: Int,
+    val nightBacklight: Int,
+
+    /**
+     * 消灯を使うか。
+     * 消灯は「バックライトを 0 にする」だけで、Android 的には画面は点いたまま。
+     * そのためタッチが即座に届き、復帰にラグがない。
+     */
+    val blackoutEnabled: Boolean,
+    val blackoutStartMinutes: Int,
+    val blackoutEndMinutes: Int,
+
+    /** 消灯中にタッチしたとき、何秒間だけ画面を戻すか。 */
+    val wakeSeconds: Int,
+
+    /** 部屋の明かりが点いたら消灯を解除するか。 */
+    val wakeOnLight: Boolean,
+    /** 復帰と判定する照度（lux）。 */
+    val wakeLuxThreshold: Int,
+) {
+    val nightStart: LocalTime get() = minutesToTime(nightStartMinutes)
+    val nightEnd: LocalTime get() = minutesToTime(nightEndMinutes)
+    val blackoutStart: LocalTime get() = minutesToTime(blackoutStartMinutes)
+    val blackoutEnd: LocalTime get() = minutesToTime(blackoutEndMinutes)
+
+    companion object {
+        val Defaults = DeckSettings(
+            nightStartMinutes = timeToMinutes(DeckConfig.NIGHT_START),
+            nightEndMinutes = timeToMinutes(DeckConfig.NIGHT_END),
+            dayBacklight = DeckConfig.DAY_BACKLIGHT_RAW,
+            nightBacklight = DeckConfig.NIGHT_BACKLIGHT_RAW,
+            blackoutEnabled = DeckConfig.BLACKOUT_ENABLED,
+            blackoutStartMinutes = timeToMinutes(DeckConfig.BLACKOUT_START),
+            blackoutEndMinutes = timeToMinutes(DeckConfig.BLACKOUT_END),
+            wakeSeconds = DeckConfig.WAKE_SECONDS,
+            wakeOnLight = DeckConfig.WAKE_ON_LIGHT,
+            wakeLuxThreshold = DeckConfig.WAKE_LUX_THRESHOLD,
+        )
+    }
+}
+
+fun timeToMinutes(time: LocalTime): Int = time.hour * 60 + time.minute
+
+fun minutesToTime(minutes: Int): LocalTime {
+    val wrapped = ((minutes % 1440) + 1440) % 1440
+    return LocalTime.of(wrapped / 60, wrapped % 60)
+}

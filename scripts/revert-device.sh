@@ -21,9 +21,9 @@ run()  { $ADB shell "$@" 2>&1 | tr -d '\r' | sed 's/^/  /'; }
 
 $ADB wait-for-device
 
-step "SystemUI を戻す"
-run "cmd package install-existing com.android.systemui"
+step "止めた常駐アプリを戻す"
 run "pm enable com.android.systemui"
+run "pm enable com.android.launcher3"
 
 step "Device Owner を解除"
 # `dpm remove-active-admin` は "Attempt to remove non-test admin" で必ず失敗する。

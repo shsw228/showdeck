@@ -80,11 +80,11 @@ fun ClockScreen(
                 nowState = nowState,
                 palette = palette,
                 fontSize = clockSize,
-                modifier = Modifier.weight(if (palette.isNight) 1f else 1.85f),
+                modifier = Modifier.weight(if (palette.minimal) 1f else 1.85f),
             )
 
             // 夜間は情報量を削って時計だけにする。暗い部屋で読むものは無い。
-            if (!palette.isNight) {
+            if (!palette.minimal) {
                 Spacer(Modifier.width(gutter))
                 Box(
                     Modifier

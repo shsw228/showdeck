@@ -40,11 +40,11 @@ object Backlight {
     /**
      * raw 値（0..[max]）を書く。直接書けなければ su にフォールバックする。
      *
-     * 0 は完全消灯でパネルによっては復帰が怪しいため、下限は 1 に丸める。
-     * 「暗すぎて操作できない」状態から adb 無しで戻れなくなるのを避ける。
+     * 0 は完全消灯。実機では raw 0 でも Android 側は Awake のままで
+     * タッチが届くため、タップすれば戻せる（消灯モードはこれを使っている）。
      */
     fun write(raw: Int): Boolean {
-        val value = raw.coerceIn(1, max)
+        val value = raw.coerceIn(0, max)
         if (NODE.canWrite()) {
             val written = runCatching { NODE.writeText(value.toString()) }
                 .onFailure { Log.w(TAG, "直接書き込みに失敗", it) }
@@ -64,7 +64,7 @@ object Backlight {
      * 読み取りだけなら安いので、監視間隔を詰めても負荷にならない。
      */
     fun enforce(raw: Int): Boolean {
-        val value = raw.coerceIn(1, max)
+        val value = raw.coerceIn(0, max)
         if (read() == value) return true
         return write(value)
     }

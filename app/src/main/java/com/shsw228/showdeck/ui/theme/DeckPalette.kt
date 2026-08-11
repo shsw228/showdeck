@@ -2,23 +2,26 @@ package com.shsw228.showdeck.ui.theme
 
 import androidx.compose.ui.graphics.Color
 import com.shsw228.showdeck.DeckConfig
-import java.time.LocalTime
+import com.shsw228.showdeck.DeckMode
 
 /**
- * 時間帯ごとの配色と輝度。
+ * モードごとの配色。
  *
  * 常時点灯の据え置き機なので、暗い部屋で眩しくないことが最優先。
  * 夜間は青成分を落とした琥珀〜赤の単色にして、情報量も削る。
+ *
+ * バックライトの raw 値はここではなく `backlightFor()` が持つ。
+ * 設定から変えられる値と固定の配色を混ぜると、真実の在処が二箇所になる。
  */
 data class DeckPalette(
     val background: Color,
     val primary: Color,
     val secondary: Color,
     val tertiary: Color,
+    /** sysfs が書けない環境向けのフォールバック用ウィンドウ輝度。 */
     val brightness: Float,
-    /** sysfs へ直接書くバックライト値。ウィンドウ輝度では届かない領域を担う。 */
-    val backlightRaw: Int,
-    val isNight: Boolean,
+    /** 情報レールを畳んで時計だけにするか。 */
+    val minimal: Boolean,
 ) {
     companion object {
         val Day = DeckPalette(
@@ -27,8 +30,7 @@ data class DeckPalette(
             secondary = Color(0xFF9AA0A6),
             tertiary = Color(0xFF4A4F55),
             brightness = DeckConfig.DAY_BRIGHTNESS,
-            backlightRaw = DeckConfig.DAY_BACKLIGHT_RAW,
-            isNight = false,
+            minimal = false,
         )
 
         val Night = DeckPalette(
@@ -37,24 +39,16 @@ data class DeckPalette(
             secondary = Color(0xFF4A1808),
             tertiary = Color(0xFF2A0D04),
             brightness = DeckConfig.NIGHT_BRIGHTNESS,
-            backlightRaw = DeckConfig.NIGHT_BACKLIGHT_RAW,
-            isNight = true,
+            minimal = true,
         )
     }
 }
 
 /**
- * 夜間帯かどうかを判定する。開始が終了より後の場合は日付をまたぐ区間として扱う。
+ * 消灯中はバックライトが 0 なので何を描いても見えないが、
+ * タッチで一時復帰したときに眩しくないよう夜間の配色を使う。
  */
-fun isNightAt(
-    time: LocalTime,
-    start: LocalTime = DeckConfig.NIGHT_START,
-    end: LocalTime = DeckConfig.NIGHT_END,
-): Boolean = if (start <= end) {
-    time >= start && time < end
-} else {
-    time >= start || time < end
+fun paletteFor(mode: DeckMode): DeckPalette = when (mode) {
+    DeckMode.DAY -> DeckPalette.Day
+    DeckMode.NIGHT, DeckMode.BLACKOUT -> DeckPalette.Night
 }
-
-fun paletteFor(time: LocalTime): DeckPalette =
-    if (isNightAt(time)) DeckPalette.Night else DeckPalette.Day

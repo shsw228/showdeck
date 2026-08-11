@@ -149,7 +149,39 @@ adb wait-for-device && adb uninstall com.shsw228.showdeck
 
 | 操作 | 動作 |
 |---|---|
-| 長押し | 診断オーバーレイ（権限・Device Owner・root の状態、IP） |
+| タップ | 消灯中なら一時的に画面を戻す |
+| 長押し | 診断オーバーレイ（権限の状態、設定画面の URL） |
+
+設定は端末上では行わない。**`http://<端末IP>:8080` を PC やスマホのブラウザで開く。**
+夜間モードの時間帯、バックライトの値、消灯の設定、logcat の閲覧ができる。
+
+## 3 つの表示モード
+
+| モード | バックライト | 表示 |
+|---|---|---|
+| `DAY` | 設定値（既定 180）| 時計＋情報レール |
+| `NIGHT` | 設定値（既定 1）| 赤単色・時計のみ |
+| `BLACKOUT` | 0 | 消灯 |
+
+消灯は画面を切っているのではなく**バックライトを 0 にしているだけ**で、Android 側は
+`Awake` のまま。そのためタッチが即座に届き、復帰にラグが無い。`goToSleep` を使うと
+touchscreen ごと止まってタッチで戻せなくなる。
+
+復帰のトリガはタップと、部屋の明かりの**立ち上がり**。閾値を超えているかで判定すると
+明るい間じゅう復帰し続けて消灯に入れない（実機で 15 秒周期の往復を観測した）。
+
+## メモリ
+
+空きが 30MB しかない端末なので、常駐アプリの削減が効く。
+
+| | MemAvailable |
+|---|---|
+| 素の状態 | 238MB |
+| `launcher3` と `SystemUI` を停止して再起動 | **429MB** |
+
+`SystemUI` は `system_server` が明示的に起動するため、`pm disable-user` しても常駐は
+続く（PSS は 62MB → 24MB に減る）。完全に消すには user 0 からのアンインストールが
+必要だが、ブートループの危険があり、この端末は復旧が難しいのでやらない。
 
 ## root（Magisk）について
 
@@ -164,10 +196,11 @@ adb wait-for-device && adb uninstall com.shsw228.showdeck
 ## ロードマップ
 
 - [x] **1. 土台** — ランチャー化、大時計、日付、診断オーバーレイ、端末セットアップ
-  - release APK 1.2MB、ユニットテスト 5 件、実機で動作確認済み
+  - release APK 1.4MB、ユニットテスト 12 件、実機で動作確認済み
 - [x] **2a. 夜間モード（減光）** — プラットフォーム署名 + sysfs 直書きで raw 1 まで到達
-- [ ] **2b. 夜間モード（画面 OFF）** — 深夜の消灯と、人の気配・タッチでの自動復帰
-- [ ] **3. 設定層** — DataStore による永続化、端末内 HTTP サーバ（WebCtl）による設定・ログ・自己更新
+- [x] **2b. 消灯と自動復帰** — バックライト 0、タップと照度の立ち上がりで復帰
+- [x] **3. 設定層** — DataStore による永続化、端末内 HTTP サーバ（WebCtl）で設定とログ
+  - [ ] 自己更新（APK の投入）はまだ
 - [ ] **4. 天気** — 気象庁 JSON、右カラムの実装
 - [ ] **5. タイマー / アラーム / TTS** — Alexa が消えた穴を埋める
 - [ ] **6. 連携** — ICS カレンダー、ゴミの日、フォト、MQTT / Home Assistant
@@ -184,9 +217,15 @@ app/src/main/java/com/shsw228/showdeck/
 │   ├── DeviceSetup.kt       端末設定をアプリ自身で適用する層
 │   ├── DeviceInfo.kt        LAN IP 取得と system UID 判定
 │   ├── Backlight.kt         sysfs 直書きと、書き戻しへの押し戻し
+│   ├── LightSensor.kt       照度センサ（消灯の復帰判定に使う）
 │   └── Su.kt                root シェルの薄いラッパ（現状は未使用の保険）
+├── DeckMode.kt              DAY / NIGHT / BLACKOUT の判定（純粋関数・テスト対象）
+├── settings/
+│   ├── DeckSettings.kt      実行時に変えられる設定
+│   └── SettingsStore.kt     DataStore による永続化
+├── web/WebCtlServer.kt      端末内 HTTP サーバ（設定・状態・ログ）
 └── ui/
     ├── ClockScreen.kt       時計と情報レール
     ├── DiagnosticsOverlay.kt
-    └── theme/DeckPalette.kt 昼夜の配色と輝度
+    └── theme/DeckPalette.kt モードごとの配色
 ```

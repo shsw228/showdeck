@@ -25,6 +25,8 @@
     <uses-permission android:name="android.permission.WRITE_SETTINGS" />
     <!-- Android 11 以降 NetworkInterface の列挙が制限されるため、IP は ConnectivityManager から取る。 -->
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+    <!-- 端末内 Web 設定画面のサーバソケットを開くために必要。 -->
+    <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
 
     <application

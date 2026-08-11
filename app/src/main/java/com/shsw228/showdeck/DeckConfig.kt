@@ -3,45 +3,56 @@ package com.shsw228.showdeck
 import java.time.LocalTime
 
 /**
- * 端末に据え置きで動かす前提の固定設定。
+ * 設定の既定値。
  *
- * 将来的には端末内 HTTP サーバ（WebCtl）から書き換えられるようにするが、
- * 5.5 インチをつつく設定 UI を先に作っても誰も得しないので、
- * まずは定数として置いて実機で詰める。
+ * 実行時の値は DataStore（`settings/SettingsStore`）が持ち、Web 設定画面から
+ * 書き換えられる。ここにあるのは初回起動時と、設定を消したときの戻り先。
  */
 object DeckConfig {
 
-    /** 夜間モードの開始時刻。 */
+    /** 夜間モード（減光＋赤単色）の時間帯。 */
     val NIGHT_START: LocalTime = LocalTime.of(23, 0)
-
-    /** 夜間モードの終了時刻。NIGHT_START より前ならば日付をまたぐものとして扱う。 */
     val NIGHT_END: LocalTime = LocalTime.of(6, 0)
 
     /**
-     * 昼間のウィンドウ輝度（0f..1f）。
-     * ウィンドウ単位の輝度指定なので権限は不要で、他アプリや設定値を汚さない。
+     * ウィンドウ輝度。sysfs が書けない環境でのフォールバックにしか使わない。
+     * 実機では DisplayPowerController に無視されることを確認済み。
      */
     const val DAY_BRIGHTNESS = 0.9f
-
-    /**
-     * 夜間のウィンドウ輝度。
-     * これは OS が許す下限までしか下がらないので、実際の減光は下の raw 値が担う。
-     */
     const val NIGHT_BRIGHTNESS = 0.01f
 
     /**
      * バックライトの raw 値（sysfs へ直接書く値。実機の max は 255）。
      *
-     * ウィンドウ輝度では届かない領域まで落とすためのもの。
-     * 夜間の 1 は「暗室でほのかに光っているだけ」の状態。
-     * 昼間の値を明示的に書き戻すのは、朝になっても暗いままにしないため。
+     * ウィンドウ輝度も Settings.System も実機では十分に暗くならなかったため、
+     * 輝度制御はこの値で一本化している。詳細は README の実測表を参照。
      */
     const val DAY_BACKLIGHT_RAW = 180
     const val NIGHT_BACKLIGHT_RAW = 1
+
+    /**
+     * 消灯（バックライト 0）の時間帯。
+     *
+     * raw 0 にしてもパネルは点いたまま（`mWakefulness=Awake`）なので、
+     * タッチがそのまま届く。`goToSleep` と違って復帰にラグが無い。
+     */
+    const val BLACKOUT_ENABLED = true
+    val BLACKOUT_START: LocalTime = LocalTime.of(1, 0)
+    val BLACKOUT_END: LocalTime = LocalTime.of(6, 0)
+
+    /** 消灯中にタッチしたとき、何秒だけ戻すか。 */
+    const val WAKE_SECONDS = 20
+
+    /** 部屋の明かりが点いたら消灯を解除する。実機には照度センサがある。 */
+    const val WAKE_ON_LIGHT = true
+    const val WAKE_LUX_THRESHOLD = 15
 
     /** 焼き付き対策の微小オフセットを進める間隔（分）。 */
     const val PIXEL_SHIFT_INTERVAL_MINUTES = 10
 
     /** 微小オフセットの振れ幅（dp）。視認できない程度に留める。 */
     const val PIXEL_SHIFT_RANGE_DP = 6
+
+    /** 端末内 Web 設定画面のポート。 */
+    const val WEB_PORT = 8080
 }
