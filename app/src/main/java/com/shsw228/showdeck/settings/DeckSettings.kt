@@ -65,11 +65,27 @@ data class DeckSettings(
     val pomodoroDailyGoal: Int,
 
     /**
-     * ごみの収集日。1 行 1 品目のテキストで持つ。
-     * 項目ごとに UI を作るより編集が速く、自治体ごとの差も吸収できる。
+     * 購読する ICS の URL。1 行 1 本のテキストで持つ。
+     * 仕事と私用でカレンダーが分かれているのが普通で、複数本要る。
      */
-    val garbageRules: String,
+    val icsUrls: String,
+
+    /** ナビの出し方。[com.shsw228.showdeck.ui.NavStyle] の名前で保存する。 */
+    val navStyle: String,
+
+    /** Home の並べ方。[com.shsw228.showdeck.ui.HomeLayout] の名前で保存する。 */
+    val homeLayout: String,
+
+    /** 時計を 24 時間表記にするか。 */
+    val clock24: Boolean,
+
+    /** 時計に秒を出すか。出さないときは 12 時間表記なら AM/PM を出す。 */
+    val showSeconds: Boolean,
 ) {
+    /** 空行と前後の空白を落とした購読先。 */
+    val icsUrlList: List<String>
+        get() = icsUrls.lines().map { it.trim() }.filter { it.isNotEmpty() }
+
     val pomodoroConfig: PomodoroConfig
         get() = PomodoroConfig(
             workMinutes = pomodoroWorkMinutes,
@@ -113,7 +129,11 @@ data class DeckSettings(
             pomodoroAutoStartWork = DeckConfig.POMODORO_AUTO_START_WORK,
             pomodoroAutoStartBreak = DeckConfig.POMODORO_AUTO_START_BREAK,
             pomodoroDailyGoal = DeckConfig.POMODORO_DAILY_GOAL,
-            garbageRules = DeckConfig.GARBAGE_RULES,
+            icsUrls = "",
+            navStyle = DeckConfig.NAV_STYLE,
+            homeLayout = DeckConfig.HOME_LAYOUT,
+            clock24 = DeckConfig.CLOCK_24H,
+            showSeconds = DeckConfig.SHOW_SECONDS,
         )
     }
 }

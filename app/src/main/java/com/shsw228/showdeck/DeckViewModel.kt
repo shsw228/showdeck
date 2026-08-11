@@ -4,6 +4,8 @@ import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.shsw228.showdeck.alert.AlertPlayer
+import com.shsw228.showdeck.alert.Countdowns
+import com.shsw228.showdeck.calendar.CalendarRepository
 import com.shsw228.showdeck.alert.AlertScheduler
 import com.shsw228.showdeck.settings.DeckSettings
 import com.shsw228.showdeck.settings.SettingsStore
@@ -21,6 +23,7 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import java.time.LocalDate
 import java.time.LocalDateTime
 
 /**
@@ -39,6 +42,7 @@ import java.time.LocalDateTime
 class DeckViewModel(
     private val settingsStore: SettingsStore,
     private val weatherRepository: WeatherRepository,
+    private val calendarRepository: CalendarRepository,
     private val alertPlayer: AlertPlayer,
     private val deviceSetup: suspend () -> DeviceSetup.Capabilities,
     private val lightSensor: () -> Flow<Float>,
@@ -85,6 +89,7 @@ class DeckViewModel(
         startClock()
         applyDeviceSetup()
         observeLight()
+        observeCalendar()
         enforceBacklight()
     }
 
@@ -131,6 +136,58 @@ class DeckViewModel(
         publishAlertState()
     }
 
+    // --- 集中 ---
+
+    /**
+     * 予定を選んで集中を始める。
+     *
+     * 名前を [DeckUiState.focusLabel] に置くのは、ポモドーロ自体が名前を
+     * 持たないため。持たせると、名前を変えるたびに残り時間の状態も作り直す
+     * ことになる。
+     */
+    fun startFocusFor(title: String) {
+        _uiState.update { it.copy(focusLabel = title) }
+        scheduler.startPomodoro(_uiState.value.settings.pomodoroConfig, clock())
+        publishAlertState()
+    }
+
+    /**
+     * 作業時間を変える。
+     *
+     * 休憩の長さはいじらない。プリセットの「25 / 5」は目安であって、
+     * 休憩をどれだけ取るかは人ごとに違い、Web 設定画面で決めてある。
+     */
+    fun setPomodoroWorkMinutes(minutes: Int) {
+        updateSettingsOnDevice { it.copy(pomodoroWorkMinutes = minutes) }
+    }
+
+    // --- カウントダウン ---
+
+    fun addTimer(minutes: Int) {
+        _uiState.update { it.copy(timers = Countdowns.add(it.timers, "", minutes, clock())) }
+    }
+
+    fun toggleTimer(id: Long) {
+        val now = clock()
+        _uiState.update { it.copy(timers = Countdowns.update(it.timers, id) { t -> t.toggle(now) }) }
+    }
+
+    fun resetTimer(id: Long) {
+        _uiState.update { it.copy(timers = Countdowns.update(it.timers, id) { t -> t.reset() }) }
+    }
+
+    // --- カレンダー ---
+
+    fun selectDay(date: LocalDate) {
+        // 日を変えたら選択中の予定は外す。別の日の予定が選ばれたままだと、
+        // 右の詳細だけ前の日を指すことになる。
+        _uiState.update { it.copy(selectedDay = date, selectedEventId = null) }
+    }
+
+    fun selectEvent(uid: String) {
+        _uiState.update { it.copy(selectedEventId = uid) }
+    }
+
     /** 端末の画面から直接いじる設定。Web を開かずに済ませたい少数だけ。 */
     fun updateSettingsOnDevice(transform: (DeckSettings) -> DeckSettings) {
         viewModelScope.launch {
@@ -163,8 +220,43 @@ class DeckViewModel(
                 _now.value = clock()
                 recomputeMode()
                 tickAlerts()
+                tickCountdowns()
                 // 秒境界に合わせる。固定間隔だと drift して秒表示が飛ぶ。
                 delay(1_000L - System.currentTimeMillis() % 1_000L)
+            }
+        }
+    }
+
+    /**
+     * 鳴り終わったカウントダウンを発報する。
+     *
+     * 発報中のものがあるときは割り込ませない。2 つ同時に鳴ると、どちらを
+     * 止めたのか分からなくなる。次の秒で拾い直す。
+     */
+    private fun tickCountdowns() {
+        if (_uiState.value.firing != null) return
+        val (next, done) = Countdowns.fire(_uiState.value.timers, clock())
+        if (done == null) return
+        _uiState.update { it.copy(timers = next) }
+        scheduler.startTimer(0, done.label, clock())
+        publishAlertState()
+    }
+
+    /**
+     * 予定を取り直す。
+     *
+     * 通信が死んでも画面は出す、が原則なので失敗しても状態は上書きしない
+     * （[CalendarRepository] がキャッシュを返す）。
+     */
+    private fun observeCalendar() {
+        viewModelScope.launch {
+            while (true) {
+                val urls = _uiState.value.settings.icsUrlList
+                if (urls.isNotEmpty()) {
+                    val feed = calendarRepository.load(urls, now = clock())
+                    _uiState.update { it.copy(calendar = feed) }
+                }
+                delay(DeckConfig.CALENDAR_REFRESH_MINUTES * 60_000L)
             }
         }
     }

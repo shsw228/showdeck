@@ -1,53 +1,47 @@
 package com.shsw228.showdeck.ui
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicText
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.text.TextStyle
-import androidx.compose.ui.text.font.FontFamily
-import androidx.compose.ui.unit.dp
 import com.shsw228.showdeck.DeckMode
 import com.shsw228.showdeck.DeckUiState
+import com.shsw228.showdeck.ui.parts.ButtonLabel
+import com.shsw228.showdeck.ui.parts.DashedRule
+import com.shsw228.showdeck.ui.parts.Gap
+import com.shsw228.showdeck.ui.parts.Label
+import com.shsw228.showdeck.ui.parts.PillButton
+import com.shsw228.showdeck.ui.parts.Readout
+import com.shsw228.showdeck.ui.parts.Tile
+import com.shsw228.showdeck.ui.parts.tappable
 import com.shsw228.showdeck.ui.theme.DeckMetrics
 import com.shsw228.showdeck.ui.theme.DeckPalette
 import com.shsw228.showdeck.ui.theme.DeckType
 
-private val OK = Color(0xFF6FBF73)
-private val NG = Color(0xFFB4564A)
-
 /**
  * 長押しで開く操作パネル。
  *
- * 設定は Web でやる方針だが、**ブラウザを開くほどでもない操作**は端末で済ませたい。
- * ここに置くのは、その場で押したくなるものだけ。
+ * 設定は Web でやる方針だが、**ブラウザを開くほどでもない操作**は端末で
+ * 済ませたい。ここに置くのは、その場で押したくなるものだけ。
  *
  *   - 明るさ（眩しい／暗いと思った瞬間に直したい）
  *   - 消灯とアラームの ON/OFF
  *
- * ポモドーロはここではなく情報レールの 2 ページ目にある。使う頻度が高く、
+ * ポモドーロとタイマーはナビから行ける画面にある。使う頻度が高く、
  * 長押しを挟まず出せたほうがよい。
  *
  * 地点・API キー・時間帯といった「一度決めたら触らない」ものは置かない。
  * 5.5 インチで文字を打つのは苦行で、Web 設定画面の存在意義でもある。
- *
- * 寸法は Android Auto の指針に合わせてある（タッチ領域 76dp 以上、本文 24sp 以上）。
  */
 @Composable
 fun ControlOverlay(
@@ -60,184 +54,143 @@ fun ControlOverlay(
     onToggleAlarm: () -> Unit,
     onDismiss: () -> Unit,
 ) {
-    Column(
+    Box(
         modifier = Modifier
             .fillMaxSize()
-            // 半透明にすると背後の時計が透けて読めない。完全に覆う。
-            .background(palette.background)
-            .padding(DeckMetrics.ScreenPadding),
+            // 外側を押したら閉じる。閉じるボタンを探させない。
+            .background(palette.surface.copy(alpha = SCRIM_ALPHA))
+            .tappable(onDismiss),
+        contentAlignment = Alignment.Center,
     ) {
         Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(DeckMetrics.ContentPaddingH),
+            horizontalArrangement = Arrangement.spacedBy(DeckMetrics.TileGap),
         ) {
-            BasicText(
-                text = "ShowDeck",
-                style = TextStyle(color = palette.primary, fontSize = DeckType.Title),
-                softWrap = false,
-            )
-            IconButton(label = "✕", palette = palette, onClick = onDismiss)
+            Tile(palette, Modifier.weight(1f)) {
+                Label("Backlight", palette.tide)
+                Gap(DeckMetrics.Space3)
+
+                Row(verticalAlignment = Alignment.Bottom) {
+                    BasicText(
+                        text = state.backlightRaw.toString(),
+                        style = DeckType.Numeral.copy(color = palette.ink),
+                    )
+                    Gap(DeckMetrics.Space2)
+                    BasicText(
+                        text = if (state.mode == DeckMode.DAY) "昼" else "夜",
+                        style = DeckType.Meta.copy(color = palette.ink3),
+                    )
+                }
+
+                Gap(DeckMetrics.Space3)
+                Row(horizontalArrangement = Arrangement.spacedBy(DeckMetrics.Space2)) {
+                    PillButton(
+                        onClick = { onAdjustBrightness(-1) },
+                        background = palette.surface,
+                        modifier = Modifier.weight(1f),
+                    ) { ButtonLabel("暗く", palette.ink) }
+                    PillButton(
+                        onClick = { onAdjustBrightness(1) },
+                        background = palette.surface,
+                        modifier = Modifier.weight(1f),
+                    ) { ButtonLabel("明るく", palette.ink) }
+                }
+
+                Box(Modifier.weight(1f))
+                Toggle("消灯", state.settings.blackoutEnabled, palette, onToggleBlackout)
+                Gap(DeckMetrics.Space2)
+                Toggle("アラーム", state.settings.alarmEnabled, palette, onToggleAlarm)
+            }
+
+            Readout(palette, Modifier.width(DeckMetrics.SidePanelWidth)) {
+                Label("Web 設定", palette.readoutMut)
+                Gap(DeckMetrics.Space2)
+                // ポートまで出す。IP だけ書いてあっても繋げない。
+                BasicText(
+                    text = "http://${state.ipAddress ?: "?"}:$webPort",
+                    style = DeckType.Body.copy(color = palette.readoutFg),
+                )
+                Gap(DeckMetrics.Space2)
+                BasicText(
+                    text = "$webUser / ${state.settings.webPassword.value}",
+                    style = DeckType.Meta.copy(color = palette.readoutMut),
+                )
+
+                Gap(DeckMetrics.Space3)
+                DashedRule(palette.readoutMut)
+                Gap(DeckMetrics.Space3)
+
+                Label("権限", palette.readoutMut)
+                Gap(DeckMetrics.Space2)
+                state.capabilities?.let { caps ->
+                    Capability("system UID", caps.isSystemUid, palette)
+                    Capability("Secure 設定", caps.canWriteSecureSettings, palette)
+                    Capability("System 設定", caps.canWriteSystemSettings, palette)
+                    Capability("Device Owner", caps.isDeviceOwner, palette)
+                    Capability("バックライト直書き", caps.canWriteBacklight, palette)
+                }
+
+                Box(Modifier.weight(1f))
+                state.luxReading?.let {
+                    BasicText(
+                        text = "照度 ${it.toInt()} lux",
+                        style = DeckType.Meta.copy(color = palette.readoutMut),
+                    )
+                }
+            }
         }
-
-        Spacer(Modifier.height(DeckMetrics.Gap4))
-
-        BrightnessRow(state = state, palette = palette, onAdjust = onAdjustBrightness)
-
-        Spacer(Modifier.height(DeckMetrics.Gap3))
-
-        Row {
-            ToggleTile(
-                label = "消灯",
-                enabled = state.settings.blackoutEnabled,
-                palette = palette,
-                modifier = Modifier.weight(1f),
-                onToggle = onToggleBlackout,
-            )
-            Spacer(Modifier.width(DeckMetrics.Gap3))
-            ToggleTile(
-                label = "アラーム",
-                enabled = state.settings.alarmEnabled,
-                palette = palette,
-                modifier = Modifier.weight(1f),
-                onToggle = onToggleAlarm,
-            )
-        }
-
-        Spacer(Modifier.weight(1f))
-        DiagnosticsFooter(state = state, palette = palette, webUser = webUser, webPort = webPort)
     }
 }
 
 @Composable
-private fun BrightnessRow(
-    state: DeckUiState,
-    palette: DeckPalette,
-    onAdjust: (Int) -> Unit,
-) {
-    // 昼か夜か、いま効いている側を出す。押した結果がすぐ画面に出ないと
-    // どちらを変えたのか分からなくなる。
-    val isNight = state.mode != DeckMode.DAY
-    val value = if (isNight) state.settings.nightBacklight else state.settings.dayBacklight
-
-    Row(verticalAlignment = Alignment.CenterVertically) {
-        Column(modifier = Modifier.weight(1f)) {
-            BasicText(
-                text = if (isNight) "明るさ（夜）" else "明るさ（昼）",
-                style = TextStyle(color = palette.secondary, fontSize = DeckType.Caption),
-                softWrap = false,
-            )
-            BasicText(
-                text = "$value",
-                style = TextStyle(
-                    color = palette.primary,
-                    fontSize = DeckType.Headline,
-                    fontFeatureSettings = TABULAR_FIGURES,
-                ),
-                softWrap = false,
-            )
-        }
-        IconButton(label = "−", palette = palette) { onAdjust(-1) }
-        Spacer(Modifier.width(DeckMetrics.Gap3))
-        IconButton(label = "＋", palette = palette) { onAdjust(1) }
-    }
-}
-
-@Composable
-private fun ToggleTile(
+private fun Toggle(
     label: String,
-    enabled: Boolean,
-    palette: DeckPalette,
-    onToggle: () -> Unit,
-    modifier: Modifier = Modifier,
-) {
-    val shape = RoundedCornerShape(DeckMetrics.CornerRadius)
-    Row(
-        modifier = modifier
-            .height(DeckMetrics.TouchTarget)
-            .clip(shape)
-            .background(palette.surface)
-            .clickable(onClick = onToggle)
-            .padding(horizontal = DeckMetrics.Gap4),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        BasicText(
-            text = label,
-            style = TextStyle(color = palette.primary, fontSize = DeckType.Body),
-            modifier = Modifier.weight(1f),
-            softWrap = false,
-        )
-        BasicText(
-            text = if (enabled) "ON" else "OFF",
-            style = TextStyle(color = if (enabled) OK else NG, fontSize = DeckType.Body),
-            softWrap = false,
-        )
-    }
-}
-
-@Composable
-private fun IconButton(
-    label: String,
+    on: Boolean,
     palette: DeckPalette,
     onClick: () -> Unit,
 ) {
-    Box(
-        modifier = Modifier
-            .size(DeckMetrics.TouchTarget)
-            .clip(RoundedCornerShape(DeckMetrics.CornerRadius))
-            .background(palette.surface)
-            .clickable(onClick = onClick),
-        contentAlignment = Alignment.Center,
+    PillButton(
+        onClick = onClick,
+        background = if (on) palette.tide else palette.surface,
+        modifier = Modifier.fillMaxWidth(),
+        height = DeckMetrics.ButtonHeightSm,
+        paddingH = DeckMetrics.ButtonPaddingHSm,
     ) {
-        BasicText(
-            text = label,
-            style = TextStyle(color = palette.primary, fontSize = DeckType.Title),
+        ButtonLabel(label, if (on) palette.readoutFg else palette.ink2, DeckType.Body)
+        Box(Modifier.weight(1f))
+        ButtonLabel(
+            text = if (on) "ON" else "OFF",
+            color = if (on) palette.readoutFg else palette.ink3,
+            style = DeckType.Meta,
         )
     }
 }
 
 /**
- * 権限の状態と設定画面の入口。
+ * 権限が取れているか。
  *
- * 「なぜこの機能が効かないのか」を端末の前で確認できることに意味がある。
- * 設定画面の URL は**ポートまで**出す。IP だけ出していた時期があり、
- * ポートが分からず開けなかった。
+ * 端末を焼き直すたびに確かめる場所なので、○×ではなく色で出す。
+ * 3m 離れた場所からでも、赤が混じっていることだけは分かる。
  */
 @Composable
-private fun DiagnosticsFooter(
-    state: DeckUiState,
-    palette: DeckPalette,
-    webUser: String,
-    webPort: Int,
-) {
-    val caps = state.capabilities
-    Column {
-        Box(Modifier.fillMaxWidth().height(1.dp).background(palette.tertiary))
-        Spacer(Modifier.height(DeckMetrics.Gap2))
-        Row {
-            listOfNotNull(
-                caps?.let { "system UID" to it.isSystemUid },
-                caps?.let { "Device Owner" to it.isDeviceOwner },
-                caps?.let { "バックライト" to it.canWriteBacklight },
-            ).forEach { (label, ok) ->
-                BasicText(
-                    text = if (ok) "✓ $label   " else "✗ $label   ",
-                    style = TextStyle(color = if (ok) OK else NG, fontSize = DeckType.Caption),
-                    softWrap = false,
-                )
-            }
-        }
-        Spacer(Modifier.height(DeckMetrics.Gap1))
+private fun Capability(label: String, granted: Boolean, palette: DeckPalette) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.SpaceBetween,
+    ) {
+        BasicText(text = label, style = DeckType.MetaSm.copy(color = palette.readoutMut))
         BasicText(
-            text = state.ipAddress
-                ?.let { "http://$it:$webPort   $webUser / ${state.settings.webPassword.value}" }
-                ?: "IP を取得できません",
-            style = TextStyle(
-                color = palette.secondary,
-                fontSize = DeckType.Caption,
-                fontFamily = FontFamily.Monospace,
-            ),
-            softWrap = false,
+            text = if (granted) "OK" else "NG",
+            style = DeckType.MetaSm.copy(color = if (granted) OK else NG),
         )
     }
+    Gap(DeckMetrics.Space1)
 }
+
+/** 下の画面をうっすら残す。真っ黒に覆うと、何の上に出ているか分からない。 */
+private const val SCRIM_ALPHA = 0.94f
+
+private val OK = Color(0xFF6FBF73)
+private val NG = Color(0xFFB4564A)

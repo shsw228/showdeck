@@ -124,6 +124,12 @@ dependencies {
 
     // material3 は意図的に入れていない。1GB 機なので依存とメモリを削り、
     // 必要な描画は foundation だけで組む。
+    //
+    // アイコンだけは例外で標準のものを借りる。天気 9 種とナビ 5 種を Canvas で
+    // 描いていたが、標準の図形で足りるものを手で持つ理由がない。ここから使うのは
+    // ImageVector（図形データ）だけで、描画は foundation の Image に渡すため、
+    // material のランタイムは APK に入らない。未使用のアイコンは R8 が落とす。
+    implementation(libs.androidx.compose.icons)
 
     testImplementation(libs.junit)
 

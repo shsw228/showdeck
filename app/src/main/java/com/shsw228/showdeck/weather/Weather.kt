@@ -3,6 +3,7 @@ package com.shsw228.showdeck.weather
 import org.json.JSONObject
 import java.time.Instant
 import java.time.LocalDate
+import java.time.LocalDateTime
 import java.time.ZoneId
 
 /**
@@ -23,8 +24,23 @@ data class WeatherSnapshot(
     val highC: Int?,
     val lowC: Int?,
     val popPercent: Int?,
-    /** 日ごとの予報。天気をタップすると出る。 */
+    /**
+     * これからの気温の推移。**3 時間刻み。**
+     *
+     * デザインは 1 時間刻みの棒グラフだが、OpenWeatherMap の無料枠は
+     * 3 時間刻みしか返さない。間を補間して埋めると、分からない値を
+     * それらしく描くことになるので刻みのまま出す。
+     */
+    val hourly: List<HourlyForecast>,
+    /** 日ごとの予報。 */
     val daily: List<DailyForecast>,
+)
+
+/** 3 時間刻みの 1 区間。 */
+data class HourlyForecast(
+    val at: LocalDateTime,
+    val tempC: Int,
+    val popPercent: Int?,
 )
 
 data class DailyForecast(
@@ -75,6 +91,17 @@ object OwmParser {
             highC = next24h.mapNotNull { it.tempC }.maxOrNull()?.let { Math.round(it).toInt() },
             lowC = next24h.mapNotNull { it.tempC }.minOrNull()?.let { Math.round(it).toInt() },
             popPercent = next24h.mapNotNull { it.pop }.maxOrNull()?.let { Math.round(it * 100).toInt() },
+            hourly = entries
+                .filter { it.at.isAfter(now) }
+                .take(MAX_HOURLY)
+                .mapNotNull { entry ->
+                    val temp = entry.tempC ?: return@mapNotNull null
+                    HourlyForecast(
+                        at = entry.at.atZone(zone).toLocalDateTime(),
+                        tempC = Math.round(temp).toInt(),
+                        popPercent = entry.pop?.let { Math.round(it * 100).toInt() },
+                    )
+                },
             daily = aggregateDaily(entries, zone),
         )
     }.getOrNull()
@@ -144,6 +171,9 @@ object OwmParser {
 
     /** 無料枠で確実に埋まるのは 5 日。 */
     private const val MAX_DAYS = 5
+
+    /** 3 時間刻みで 12 区間 = 36 時間ぶん。Weather 画面のグラフがこの本数。 */
+    private const val MAX_HOURLY = 12
 
     /**
      * 天気 ID とアイコンコードから描くアイコンを決める。

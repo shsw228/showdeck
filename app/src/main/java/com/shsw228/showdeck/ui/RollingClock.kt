@@ -12,33 +12,27 @@ import androidx.compose.foundation.text.BasicText
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.TextStyle
-import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.unit.TextUnit
 
 /**
  * 数字が転がって切り替わる時計。
  *
  * 桁ごとに独立して動かすのが要点。文字列まるごとを差し替えると、
- * 変わっていない「1」まで一緒に動いて落ち着かない。
+ * 変わっていない桁まで一緒に動いて落ち着かない。
  *
- * 動きの向きは上方向に固定している。時刻は前へ進むものなので、
- * 数字が下から現れて上へ抜けるほうが、増えている感じと一致する。
- * 桁上がり（59 → 00）で下向きに戻すと、そこだけ時間が巻き戻って見える。
+ * 動きは上方向に固定している。時刻は前へ進むものなので、数字が下から
+ * 現れて上へ抜けるほうが増えている感じと一致する。桁上がり（59 → 00）で
+ * 下向きに戻すと、そこだけ時間が巻き戻って見える。
  *
- * 表示は `HH:mm` なので、動くのは毎分 1 回だけ。常時 60fps を回す
- * 秒バーと違い、こちらは費用がほぼかからない。
+ * 渡すのは `HH:mm` までにすること。秒を混ぜると毎秒アニメーションが走り、
+ * アイドル時 1 コアのこの端末では CPU が跳ねる。
  */
 @Composable
 fun RollingClock(
     text: String,
-    color: Color,
-    fontSize: TextUnit,
+    style: TextStyle,
     modifier: Modifier = Modifier,
 ) {
-    val style = clockStyle(color, fontSize)
-
     Row(modifier = modifier, verticalAlignment = Alignment.CenterVertically) {
         text.forEachIndexed { index, char ->
             // 区切りの「:」は動かさない。動かすと時計全体が波打って見える。
@@ -67,16 +61,6 @@ fun RollingClock(
         }
     }
 }
-
-/** 時計の文字の見た目。桁と区切りで必ず同じものを使う。 */
-private fun clockStyle(color: Color, fontSize: TextUnit) = TextStyle(
-    color = color,
-    fontSize = fontSize,
-    // 太字は使わない、が Android Auto の指針。大きな文字ほど細くしてよい。
-    fontWeight = FontWeight.Light,
-    // 桁が動くので、等幅でないと隣の桁まで揺れる。
-    fontFeatureSettings = TABULAR_FIGURES,
-)
 
 /**
  * 転がる時間。

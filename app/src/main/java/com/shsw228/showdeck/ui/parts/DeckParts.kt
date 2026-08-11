@@ -1,0 +1,305 @@
+package com.shsw228.showdeck.ui.parts
+
+import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxScope
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ColumnScope
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.RowScope
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.text.BasicText
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.ColorFilter
+import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.layout.layout
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Dp
+import com.shsw228.showdeck.ui.theme.DeckMetrics
+import com.shsw228.showdeck.ui.theme.DeckPalette
+import com.shsw228.showdeck.ui.theme.DeckType
+import com.shsw228.showdeck.ui.theme.RingSpec
+
+/**
+ * タイル。明るい面。
+ *
+ * 押せるものと押せないものがあるので [onClick] は省略できる。
+ */
+@Composable
+fun Tile(
+    palette: DeckPalette,
+    modifier: Modifier = Modifier,
+    onClick: (() -> Unit)? = null,
+    padding: PaddingValues = PaddingValues(DeckMetrics.TilePadding),
+    content: @Composable ColumnScope.() -> Unit,
+) = Panel(palette.paper, modifier, onClick, padding, content)
+
+/**
+ * 濃色パネル。
+ *
+ * 昼夜どちらでも暗い面。**その画面の主役を 1 つだけ**ここに置く。
+ * 濃い面が 2 つ並ぶと、どちらを見ればいいか分からなくなる。
+ */
+@Composable
+fun Readout(
+    palette: DeckPalette,
+    modifier: Modifier = Modifier,
+    onClick: (() -> Unit)? = null,
+    padding: PaddingValues = PaddingValues(DeckMetrics.PanelPadding),
+    content: @Composable ColumnScope.() -> Unit,
+) = Panel(palette.readoutBg, modifier, onClick, padding, content)
+
+@Composable
+private fun Panel(
+    color: Color,
+    modifier: Modifier,
+    onClick: (() -> Unit)?,
+    padding: PaddingValues,
+    content: @Composable ColumnScope.() -> Unit,
+) {
+    Column(
+        modifier = modifier
+            .clip(DeckMetrics.TileShape)
+            .background(color)
+            .tappable(onClick)
+            .padding(padding),
+        content = content,
+    )
+}
+
+/**
+ * 波紋を出さないタップ。
+ *
+ * material を入れていないので `Indication` の既定実装が無い。入れても、
+ * 画面がタイルで埋まっているこの構成では波紋が主張しすぎる。
+ */
+@Composable
+fun Modifier.tappable(onClick: (() -> Unit)?): Modifier {
+    if (onClick == null) return this
+    val interaction = remember { MutableInteractionSource() }
+    return clickable(interactionSource = interaction, indication = null, onClick = onClick)
+}
+
+/**
+ * アイコン。
+ *
+ * material の `Icon` は material ランタイムを引き込むので使わない。
+ * 図形（`ImageVector`）だけ借りて、描画は foundation の [Image] に任せる。
+ */
+@Composable
+fun DeckIcon(
+    image: ImageVector,
+    color: Color,
+    size: Dp,
+    modifier: Modifier = Modifier,
+) = Image(
+    imageVector = image,
+    contentDescription = null,
+    colorFilter = ColorFilter.tint(color),
+    modifier = modifier.size(size),
+)
+
+/**
+ * タイルの小見出し。`OUTSIDE` `TODAY` のたぐい。
+ *
+ * 大文字化はここでやる。呼び出し側に大文字の文字列を書くと、
+ * 日本語を入れたくなったときに全部直すことになる。
+ */
+@Composable
+fun Label(
+    text: String,
+    color: Color,
+    modifier: Modifier = Modifier,
+) = BasicText(
+    text = text.uppercase(),
+    style = DeckType.Label.copy(color = color),
+    maxLines = 1,
+    overflow = TextOverflow.Ellipsis,
+    modifier = modifier,
+)
+
+/**
+ * 破線の区切り。
+ *
+ * 実線にすると罫線が主張してタイルの中が窮屈になる。区切りがあることだけ
+ * 伝わればよいので点線にする。
+ */
+@Composable
+fun DashedRule(
+    color: Color,
+    modifier: Modifier = Modifier,
+) {
+    Canvas(
+        modifier = modifier
+            .fillMaxWidth()
+            .height(DeckMetrics.RuleDot),
+    ) {
+        val dot = DeckMetrics.RuleDot.toPx()
+        val step = DeckMetrics.RuleDotPitch.toPx()
+        var x = 0f
+        while (x < size.width) {
+            drawRect(color = color, topLeft = Offset(x, 0f), size = Size(dot, dot))
+            x += step
+        }
+    }
+}
+
+/**
+ * 進捗リング。
+ *
+ * [fraction] は**残り**の割合。0 で空、1 で満。減るものを減る値で表さないと、
+ * 呼び出し側が毎回 1 から引くことになる。
+ *
+ * 大きさ・線の太さ・中央の文字は [RingSpec] が組で持つ。別々に渡させると
+ * どこかで組み合わせがずれる。
+ */
+@Composable
+fun ProgressRing(
+    fraction: Float,
+    spec: RingSpec,
+    trackColor: Color,
+    color: Color,
+    modifier: Modifier = Modifier,
+    content: @Composable BoxScope.() -> Unit = {},
+) {
+    Box(modifier = modifier.size(spec.size), contentAlignment = Alignment.Center) {
+        Canvas(Modifier.fillMaxSize()) {
+            val width = spec.stroke.toPx()
+            val topLeft = Offset(width / 2, width / 2)
+            val arc = Size(size.width - width, size.height - width)
+            drawArc(
+                color = trackColor,
+                startAngle = 0f,
+                sweepAngle = 360f,
+                useCenter = false,
+                topLeft = topLeft,
+                size = arc,
+                style = Stroke(width = width),
+            )
+            drawArc(
+                color = color,
+                // 12 時から時計回り。0 度は 3 時の位置なので 90 度戻す。
+                startAngle = -90f,
+                sweepAngle = 360f * fraction.coerceIn(0f, 1f),
+                useCenter = false,
+                topLeft = topLeft,
+                size = arc,
+                style = Stroke(width = width, cap = StrokeCap.Round),
+            )
+        }
+        content()
+    }
+}
+
+/**
+ * 横棒の進捗。
+ *
+ * [fraction] は**経過**の割合。リングと逆なのは、タイマーは「どれだけ経ったか」を、
+ * リングは「あとどれだけか」を見るものだから。
+ */
+@Composable
+fun ProgressBar(
+    fraction: Float,
+    trackColor: Color,
+    color: Color,
+    modifier: Modifier = Modifier,
+) {
+    Box(
+        modifier = modifier
+            .fillMaxWidth()
+            .height(DeckMetrics.BarHeight)
+            .clip(DeckMetrics.Pill)
+            .background(trackColor),
+    ) {
+        Box(
+            Modifier
+                .fillMaxHeight()
+                .fillMaxWidth(fraction.coerceIn(0f, 1f))
+                .clip(DeckMetrics.Pill)
+                .background(color),
+        )
+    }
+}
+
+/**
+ * 錠剤ボタン。この画面で押せるものは全部この形。
+ *
+ * 中身は呼び出し側が置く。アイコン付きのナビと文字だけのボタンで
+ * 構成が違うため。
+ */
+@Composable
+fun PillButton(
+    onClick: () -> Unit,
+    background: Color,
+    modifier: Modifier = Modifier,
+    height: Dp = DeckMetrics.ButtonHeight,
+    paddingH: Dp = DeckMetrics.ButtonPaddingH,
+    content: @Composable RowScope.() -> Unit,
+) {
+    Row(
+        modifier = modifier
+            .height(height)
+            .clip(DeckMetrics.Pill)
+            .background(background)
+            .tappable(onClick)
+            .padding(horizontal = paddingH),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.Center,
+        content = content,
+    )
+}
+
+/** ボタンの中の文字。 */
+@Composable
+fun ButtonLabel(text: String, color: Color, style: TextStyle = DeckType.Button) = BasicText(
+    text = text,
+    style = style.copy(color = color),
+    maxLines = 1,
+)
+
+/**
+ * 親の幅に対する割合で横にずらす。
+ *
+ * `offset` は Dp しか取らないので、置く段で親の幅に掛ける。timeline の
+ * ブロックと予報のレンジ棒がこれを使う。どちらも「時刻や気温の中での位置」を
+ * 表すもので、dp では表しようがない。
+ */
+fun Modifier.offsetFraction(fraction: Float) = this.then(
+    Modifier.layout { measurable, constraints ->
+        val placeable = measurable.measure(constraints)
+        layout(placeable.width, placeable.height) {
+            placeable.placeRelative((constraints.maxWidth * fraction).toInt(), 0)
+        }
+    },
+)
+
+/**
+ * 縦横どちらでも使える隙間。
+ *
+ * Row の中なら幅、Column の中なら高さとして効く。向きごとに書き分けると、
+ * 入れ子を組み替えたときに直し忘れる。
+ */
+@Composable
+fun Gap(size: Dp) = Spacer(Modifier.size(size))

@@ -10,6 +10,8 @@ import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import com.shsw228.showdeck.system.ApiKey
 import com.shsw228.showdeck.system.Secrets
+import com.shsw228.showdeck.ui.HomeLayout
+import com.shsw228.showdeck.ui.NavStyle
 import androidx.datastore.preferences.preferencesDataStore
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
@@ -53,7 +55,11 @@ class SettingsStore(private val context: Context) {
             prefs[POMODORO_AUTO_WORK] = settings.pomodoroAutoStartWork
             prefs[POMODORO_AUTO_BREAK] = settings.pomodoroAutoStartBreak
             prefs[POMODORO_GOAL] = settings.pomodoroDailyGoal
-            prefs[GARBAGE_RULES] = settings.garbageRules
+            prefs[ICS_URLS] = settings.icsUrls
+            prefs[NAV_STYLE] = settings.navStyle
+            prefs[HOME_LAYOUT] = settings.homeLayout
+            prefs[CLOCK_24] = settings.clock24
+            prefs[SHOW_SECONDS] = settings.showSeconds
         }
     }
 
@@ -106,7 +112,13 @@ class SettingsStore(private val context: Context) {
             pomodoroAutoStartWork = this[POMODORO_AUTO_WORK] ?: d.pomodoroAutoStartWork,
             pomodoroAutoStartBreak = this[POMODORO_AUTO_BREAK] ?: d.pomodoroAutoStartBreak,
             pomodoroDailyGoal = (this[POMODORO_GOAL] ?: d.pomodoroDailyGoal).coerceIn(1, 24),
-            garbageRules = this[GARBAGE_RULES] ?: d.garbageRules,
+            icsUrls = this[ICS_URLS] ?: d.icsUrls,
+            // 知らない名前が入っていたら既定に落とす。設定ファイルを手で
+            // 書き換えたときに、画面が真っ白になるより既定で出るほうがよい。
+            navStyle = this[NAV_STYLE]?.takeIf { it.isKnownNavStyle() } ?: d.navStyle,
+            homeLayout = this[HOME_LAYOUT]?.takeIf { it.isKnownHomeLayout() } ?: d.homeLayout,
+            clock24 = this[CLOCK_24] ?: d.clock24,
+            showSeconds = this[SHOW_SECONDS] ?: d.showSeconds,
         )
     }
 
@@ -135,6 +147,16 @@ class SettingsStore(private val context: Context) {
         val POMODORO_AUTO_WORK = booleanPreferencesKey("pomodoro_auto_work")
         val POMODORO_AUTO_BREAK = booleanPreferencesKey("pomodoro_auto_break")
         val POMODORO_GOAL = intPreferencesKey("pomodoro_goal")
-        val GARBAGE_RULES = stringPreferencesKey("garbage_rules")
+        val ICS_URLS = stringPreferencesKey("ics_urls")
+        val NAV_STYLE = stringPreferencesKey("nav_style")
+        val HOME_LAYOUT = stringPreferencesKey("home_layout")
+        val CLOCK_24 = booleanPreferencesKey("clock_24")
+        val SHOW_SECONDS = booleanPreferencesKey("show_seconds")
     }
 }
+
+private fun String.isKnownNavStyle() =
+    NavStyle.entries.any { it.name == this }
+
+private fun String.isKnownHomeLayout() =
+    HomeLayout.entries.any { it.name == this }

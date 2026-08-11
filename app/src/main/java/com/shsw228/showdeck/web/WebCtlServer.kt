@@ -6,7 +6,7 @@ import com.shsw228.showdeck.DeckUiState
 import com.shsw228.showdeck.DeckViewModel
 import com.shsw228.showdeck.settings.DeckSettings
 import com.shsw228.showdeck.settings.minutesToTime
-import com.shsw228.showdeck.garbage.GarbageSchedule
+
 import com.shsw228.showdeck.settings.timeToMinutes
 import com.shsw228.showdeck.system.ApiKey
 import com.shsw228.showdeck.system.Backlight
@@ -98,7 +98,11 @@ class WebCtlServer(
             pomodoroAutoStartWork = params.containsKey("pomoAutoWork"),
             pomodoroAutoStartBreak = params.containsKey("pomoAutoBreak"),
             pomodoroDailyGoal = params.int("pomoGoal", current.pomodoroDailyGoal).coerceIn(1, 24),
-            garbageRules = params["garbageRules"]?.trim() ?: current.garbageRules,
+            icsUrls = params["icsUrls"]?.trim() ?: current.icsUrls,
+            navStyle = params["navStyle"] ?: current.navStyle,
+            homeLayout = params["homeLayout"] ?: current.homeLayout,
+            clock24 = params.containsKey("clock24"),
+            showSeconds = params.containsKey("showSeconds"),
         )
         runBlocking { viewModel.updateSettings(updated) }
         Log.i(TAG, "設定を更新: $updated")
@@ -230,15 +234,13 @@ private fun renderIndex(state: DeckUiState): String {
         "API キーが未設定です"
     }
 
-    // 書いた規則がどう解釈されたかを見せる。曜日を打ち間違えても
-    // 画面に出てこないだけで気づけないので、次の収集日をここで返す。
-    val garbageStatus = GarbageSchedule.parse(s.garbageRules).let { rules ->
-        when {
-            rules.isEmpty() -> "未設定（情報レールのページも出ません）"
-            else -> GarbageSchedule.nextCollection(rules, LocalDate.now())
-                ?.let { "次は ${it.date} · ${it.labels.joinToString(" ")}（${rules.size} 件を認識）" }
-                ?: "${rules.size} 件を認識しましたが、当たる日がありません"
-        }
+    // 購読が生きているかを見せる。URL を打ち間違えても画面に予定が
+    // 出てこないだけで、理由が分からない。取得できた件数をここで返す。
+    val calendarStatus = when {
+        s.icsUrlList.isEmpty() -> "未設定（Home の予定欄と Calendar 画面が空になります）"
+        state.calendar.error != null -> "取得に失敗しています: ${state.calendar.error}"
+        state.calendar.fetchedAt == null -> "まだ取得できていません（15 分以内に入ります）"
+        else -> "${s.icsUrlList.size} 本から ${state.calendar.events.size} 件を認識"
     }
 
     val caps = state.capabilities
@@ -382,12 +384,30 @@ private fun renderIndex(state: DeckUiState): String {
   </fieldset>
 
   <fieldset>
-    <legend>ごみの収集日</legend>
-    <p class="sub">$garbageStatus</p>
-    <textarea name="garbageRules" rows="5" placeholder="燃えるごみ: 火,金&#10;資源: 水&#10;不燃ごみ: 第2水,第4水">${s.garbageRules}</textarea>
-    <p class="hint">1 行 1 品目。曜日は 月火水木金土日、「第2水」で第 2 水曜。
-       読めない行は無視するので、書き間違えても他の行は生きる。
-       空にすると情報レールのページごと消える。</p>
+    <legend>カレンダー (ICS)</legend>
+    <p class="sub">$calendarStatus</p>
+    <textarea name="icsUrls" rows="4" placeholder="https://calendar.google.com/calendar/ical/.../basic.ics">${s.icsUrls}</textarea>
+    <p class="hint">1 行 1 本。仕事と私用を分けているなら両方書く。
+       取りに行くのは 15 分ごとで、失敗したら前回の内容を使い続ける。
+       繰り返しは毎日・毎週まで対応（毎月と毎年は初回だけ出る）。</p>
+  </fieldset>
+
+  <fieldset>
+    <legend>画面</legend>
+    <label><span>ナビの出し方</span>
+      <select name="navStyle">
+        <option value="RAIL" ${sel(s.navStyle, "RAIL")}>左レール</option>
+        <option value="DOCK" ${sel(s.navStyle, "DOCK")}>下ドック</option>
+        <option value="TILES" ${sel(s.navStyle, "TILES")}>タイルのみ</option>
+      </select></label>
+    <label><span>Home の並べ方</span>
+      <select name="homeLayout">
+        <option value="TIMELINE" ${sel(s.homeLayout, "TIMELINE")}>一日の流れ</option>
+        <option value="GRID" ${sel(s.homeLayout, "GRID")}>均等割り</option>
+        <option value="HERO" ${sel(s.homeLayout, "HERO")}>集中を主役に</option>
+      </select></label>
+    <label><span>24 時間表記</span><input type="checkbox" name="clock24" ${if (s.clock24) "checked" else ""}></label>
+    <label><span>秒を出す</span><input type="checkbox" name="showSeconds" ${if (s.showSeconds) "checked" else ""}></label>
   </fieldset>
 
   <button type="submit">保存</button>
@@ -402,3 +422,6 @@ private fun renderIndex(state: DeckUiState): String {
 </html>
     """.trimIndent()
 }
+
+/** `<select>` の選択済み属性。分岐を HTML に埋めると読めなくなる。 */
+private fun sel(current: String, value: String) = if (current == value) "selected" else ""

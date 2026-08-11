@@ -88,12 +88,33 @@ object DeckConfig {
     const val POMODORO_DAILY_GOAL = 8
 
     /**
-     * ごみの収集日。空で始める。
+     * ナビの出し方の既定。
      *
-     * 自治体ごとに違うので既定値を入れても当たらない。空なら
-     * 情報レールのページごと出さないので、未設定でも邪魔にならない。
+     * 左レール。どこにいても 1 タップで移動でき、縦 480px のこの画面では
+     * 下ドックより持っていかれる面積が小さい。
      */
-    const val GARBAGE_RULES = ""
+    const val NAV_STYLE = "RAIL"
+
+    /**
+     * Home の並べ方の既定。
+     *
+     * 一日の流れ。据え置きの画面を見るのは「次に何があるか」を確かめたい
+     * ときが大半で、帯がその答えを一目で返す。
+     */
+    const val HOME_LAYOUT = "TIMELINE"
+
+    const val CLOCK_24H = true
+
+    /**
+     * 時計に秒を出すか。
+     *
+     * 出すと毎秒 1 回の再コンポーズが要る。旧構成の全画面秒バーは 60fps で
+     * CPU を 39% 食ったが、こちらはヘッダの 2 文字だけなので桁が違う。
+     */
+    const val SHOW_SECONDS = true
+
+    /** カレンダーを取りに行く間隔。 */
+    const val CALENDAR_REFRESH_MINUTES = 15L
 
     /** 端末内 Web 設定画面のポート。 */
     const val WEB_PORT = 8080

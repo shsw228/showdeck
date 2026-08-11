@@ -5,47 +5,117 @@ import com.shsw228.showdeck.DeckConfig
 import com.shsw228.showdeck.DeckMode
 
 /**
- * モードごとの配色。
+ * 配色。`Echo Dashboard.dc.html` の CSS 変数をそのまま写している。
  *
- * 常時点灯の据え置き機なので、暗い部屋で眩しくないことが最優先。
- * 夜間は青成分を落とした琥珀〜赤の単色にして、情報量も削る。
+ * 名前も向こうに合わせてある。デザインを直したときに、どの変数が
+ * どのフィールドかを探さなくて済むのが、意味の通った名前より効く。
  *
- * バックライトの raw 値はここではなく `backlightFor()` が持つ。
+ * `--desk` だけは持っていない。あれはモックの「机の上」で、
+ * 960×480 の画面の外側にあるもの。
+ *
+ * バックライトの raw 値はここではなく [DeckMode.backlightFor] が持つ。
  * 設定から変えられる値と固定の配色を混ぜると、真実の在処が二箇所になる。
  */
 data class DeckPalette(
-    val background: Color,
-    /** ボタンなど、背景からわずかに浮かせる面。常時表示なので光を増やしすぎない。 */
+    /** 主要な文字。 */
+    val ink: Color,
+    /** 従属する文字。見出しの説明や副題。 */
+    val ink2: Color,
+    /** 補足の文字。単位、メタ情報。 */
+    val ink3: Color,
+    /** 罫線と、進捗バーの溝。 */
+    val line: Color,
+    /** 画面の地。 */
     val surface: Color,
-    val primary: Color,
-    val secondary: Color,
-    val tertiary: Color,
+    /** タイルの面。地からわずかに浮かせる。 */
+    val paper: Color,
+    /** 主色。見出しラベルと選択中のナビ。 */
+    val tide: Color,
+    /** 主色の文字用。`tide` を地に敷いたときに読める濃さ。 */
+    val tideInk: Color,
+    val seagrass: Color,
+    val sand: Color,
+    /** 警告色。timeline の現在位置マーカーにも使う。 */
+    val buoy: Color,
+
+    /** 濃色パネルの地。昼夜どちらでも暗い。 */
+    val readoutBg: Color,
+    /** 濃色パネルの上の文字。 */
+    val readoutFg: Color,
+    /** 濃色パネルの上の補足文字。 */
+    val readoutMut: Color,
+
     /** sysfs が書けない環境向けのフォールバック用ウィンドウ輝度。 */
     val brightness: Float,
-    /** 情報レールを畳んで時計だけにするか。 */
-    val minimal: Boolean,
 ) {
     companion object {
+        /**
+         * 濃色パネルの上のアクセント。
+         *
+         * デザインでは昼夜とも `#5FC9BF` 固定。濃色パネル自体が昼夜で
+         * 変わらない（`readoutBg` はどちらも暗い）ので、その上に載る色も
+         * 変える理由がない。テーマから外して定数にしてある。
+         */
+        val ReadoutAccent = Color(0xFF5FC9BF)
+
+        /** 濃色パネルの上のボタン文字。`ReadoutAccent` を地にしたときに読める濃さ。 */
+        val OnReadoutAccent = Color(0xFF04262B)
+
+        /** 予定の色分け。デザインの `TONES` に対応する。 */
+        val EventBlue = Color(0xFF2F6DA4)
+
         val Day = DeckPalette(
-            background = Color(0xFF07080A),
-            surface = Color(0xFF16181C),
-            primary = Color(0xFFF2EFE6),
-            secondary = Color(0xFF9AA0A6),
-            tertiary = Color(0xFF4A4F55),
+            ink = Color(0xFF0B2A3A),
+            ink2 = Color(0xFF38566A),
+            ink3 = Color(0xFF6E8697),
+            line = Color(0xFFCBD8D3),
+            surface = Color(0xFFE7EEEB),
+            paper = Color(0xFFFBFDFC),
+            tide = Color(0xFF0E7C7B),
+            tideInk = Color(0xFF0A5A59),
+            seagrass = Color(0xFF3F8F5B),
+            sand = Color(0xFFB9791A),
+            buoy = Color(0xFFE24E1B),
+            readoutBg = Color(0xFF0B2A3A),
+            readoutFg = Color(0xFFFFFFFF),
+            readoutMut = Color(0xFF8FA8B3),
             brightness = DeckConfig.DAY_BRIGHTNESS,
-            minimal = false,
         )
 
         val Night = DeckPalette(
-            background = Color(0xFF000000),
-            surface = Color(0xFF140602),
-            primary = Color(0xFF8C2F12),
-            secondary = Color(0xFF4A1808),
-            tertiary = Color(0xFF2A0D04),
+            ink = Color(0xFFE8F1F3),
+            ink2 = Color(0xFFA9C4CE),
+            ink3 = Color(0xFF7593A2),
+            line = Color(0xFF1D4A5E),
+            surface = Color(0xFF07202D),
+            paper = Color(0xFF0D3243),
+            tide = Color(0xFF1AA39A),
+            tideInk = Color(0xFF5FC9BF),
+            seagrass = Color(0xFF6FBF8A),
+            sand = Color(0xFFD9A24A),
+            buoy = Color(0xFFF0714A),
+            readoutBg = Color(0xFF0A5A59),
+            readoutFg = Color(0xFFFFFFFF),
+            readoutMut = Color(0xFF9BD3CE),
             brightness = DeckConfig.NIGHT_BRIGHTNESS,
-            minimal = true,
         )
     }
+}
+
+/**
+ * 予定の色。デザインの `TONES` と同じ 5 色。
+ *
+ * 予定そのものは色を持たないので、ICS の UID から決める。同じ予定が
+ * 毎日違う色になると、色で見分けるという用途が成り立たない。
+ */
+enum class EventTone { TIDE, SAND, BLUE, GRASS, BUOY }
+
+fun EventTone.color(palette: DeckPalette): Color = when (this) {
+    EventTone.TIDE -> palette.tide
+    EventTone.SAND -> palette.sand
+    EventTone.BLUE -> DeckPalette.EventBlue
+    EventTone.GRASS -> palette.seagrass
+    EventTone.BUOY -> palette.buoy
 }
 
 /**

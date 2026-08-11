@@ -29,11 +29,20 @@ import com.shsw228.showdeck.system.DeviceSetup
 import com.shsw228.showdeck.system.lightSensorFlow
 import com.shsw228.showdeck.system.localIpAddress
 import com.shsw228.showdeck.ui.AlertOverlay
-import com.shsw228.showdeck.ui.ClockScreen
+import com.shsw228.showdeck.ui.CalendarScreen
 import com.shsw228.showdeck.ui.ControlOverlay
-import com.shsw228.showdeck.ui.ForecastOverlay
-import com.shsw228.showdeck.ui.rememberSecondsProgress
+import com.shsw228.showdeck.ui.DeckActions
+import com.shsw228.showdeck.ui.DeckDestination
+import com.shsw228.showdeck.ui.DeckScaffold
+import com.shsw228.showdeck.ui.FocusScreen
+import com.shsw228.showdeck.ui.HomeLayout
+import com.shsw228.showdeck.ui.HomeScreen
+import com.shsw228.showdeck.ui.NavStyle
+import com.shsw228.showdeck.ui.TimersScreen
+import com.shsw228.showdeck.ui.WeatherScreen
+
 import com.shsw228.showdeck.ui.theme.paletteFor
+import com.shsw228.showdeck.calendar.CalendarRepository
 import com.shsw228.showdeck.weather.WeatherRepository
 import com.shsw228.showdeck.web.WebAuth
 import com.shsw228.showdeck.web.WebCtlServer
@@ -82,6 +91,7 @@ class MainActivity : ComponentActivity() {
                 DeckViewModel(
                     settingsStore = settingsStore,
                     weatherRepository = WeatherRepository(appContext),
+                    calendarRepository = CalendarRepository(appContext),
                     // TTS の初期化は数百 ms かかる。発報の瞬間に作ると最初の一言が欠ける。
                     alertPlayer = AlertPlayer(appContext).also { it.prepare() },
                     deviceSetup = {
@@ -118,9 +128,38 @@ class MainActivity : ComponentActivity() {
         // この階層が毎秒再コンポーズされる。
         val nowState = viewModel.now.collectAsStateWithLifecycle()
 
-        // どのオーバーレイを開いているかは画面だけの都合なので、ここで持つ。
+        // 操作パネルを開いているかは画面だけの都合なので、ここで持つ。
         var showControls by remember { mutableStateOf(false) }
-        var showForecast by remember { mutableStateOf(false) }
+
+        // どの画面にいるかも同じ。再起動したら Home に戻ってよい
+        // （常駐の据え置き機で、前回どこを見ていたかを覚えていても嬉しくない）。
+        var destination by remember { mutableStateOf(DeckDestination.HOME) }
+
+        val actions = remember(viewModel) {
+            DeckActions(
+                navigate = { destination = it },
+                togglePomodoro = {
+                    // 未開始なら開始、走っていれば一時停止。ボタンは 1 つで足りる。
+                    if (viewModel.uiState.value.pomodoro == null) {
+                        viewModel.startPomodoro()
+                    } else {
+                        viewModel.togglePomodoroPause()
+                    }
+                },
+                resetPomodoro = { viewModel.stopPomodoro() },
+                skipPomodoro = { viewModel.skipPomodoro() },
+                setPomodoroWorkMinutes = { viewModel.setPomodoroWorkMinutes(it) },
+                toggleTimer = { viewModel.toggleTimer(it) },
+                resetTimer = { viewModel.resetTimer(it) },
+                addTimer = { viewModel.addTimer(it) },
+                selectEvent = { viewModel.selectEvent(it) },
+                selectDay = { viewModel.selectDay(it) },
+                startFocusFor = { event ->
+                    viewModel.startFocusFor(event.title)
+                    destination = DeckDestination.FOCUS
+                },
+            )
+        }
 
         Box(
             modifier = Modifier
@@ -134,29 +173,55 @@ class MainActivity : ComponentActivity() {
                     )
                 },
         ) {
-            ClockScreen(
+            DeckScaffold(
+                destination = destination,
+                navStyle = NavStyle.valueOf(state.settings.navStyle),
                 nowState = nowState,
-                // 消灯中はフレームを回さない。真っ暗な画面のために CPU を
-                // 起こし続ける理由がなく、この端末はアイドル時 1 コアしかない。
-                secondsProgress = rememberSecondsProgress(
-                    animate = state.mode != DeckMode.BLACKOUT,
-                ),
-                state = state,
+                clock24 = state.settings.clock24,
+                showSeconds = state.settings.showSeconds,
                 palette = palette,
-                onWeatherClick = { showForecast = true },
-                onPomodoroStart = { viewModel.startPomodoro() },
-                onPomodoroPause = { viewModel.togglePomodoroPause() },
-                onPomodoroSkip = { viewModel.skipPomodoro() },
-                onPomodoroStop = { viewModel.stopPomodoro() },
-            )
+                onNavigate = { destination = it },
+            ) {
+                // 画面の中身は毎秒の時刻を要る。ここで State を読み解くので、
+                // 再コンポーズはこの内側だけに閉じる。
+                val now = nowState.value
 
-            state.weather?.let { snapshot ->
-                if (showForecast && snapshot.daily.isNotEmpty()) {
-                    ForecastOverlay(
-                        weather = snapshot,
+                when (destination) {
+                    DeckDestination.HOME -> HomeScreen(
+                        state = state,
+                        now = now,
+                        layout = HomeLayout.valueOf(state.settings.homeLayout),
                         palette = palette,
-                        today = nowState.value.toLocalDate(),
-                        onDismiss = { showForecast = false },
+                        actions = actions,
+                    )
+
+                    DeckDestination.WEATHER -> WeatherScreen(
+                        weather = state.weather,
+                        today = now.toLocalDate(),
+                        palette = palette,
+                    )
+
+                    DeckDestination.CALENDAR -> CalendarScreen(
+                        feed = state.calendar,
+                        selectedDay = state.selectedDay ?: now.toLocalDate(),
+                        selectedEventId = state.selectedEventId,
+                        now = now,
+                        palette = palette,
+                        actions = actions,
+                    )
+
+                    DeckDestination.FOCUS -> FocusScreen(
+                        state = state,
+                        now = now,
+                        palette = palette,
+                        actions = actions,
+                    )
+
+                    DeckDestination.TIMERS -> TimersScreen(
+                        timers = state.timers,
+                        now = now,
+                        palette = palette,
+                        actions = actions,
                     )
                 }
             }
