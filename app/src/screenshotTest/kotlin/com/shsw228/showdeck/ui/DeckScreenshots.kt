@@ -1,6 +1,7 @@
 package com.shsw228.showdeck.ui
 
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.tooling.preview.Preview
 import com.android.tools.screenshot.PreviewTest
@@ -30,6 +31,12 @@ import java.time.LocalDateTime
 private const val DEVICE_SPEC = "spec:width=960px,height=480px,dpi=195"
 
 private val nowState = mutableStateOf(LocalDateTime.of(2026, 8, 11, 15, 27, 42))
+
+/**
+ * 秒の線の位置。実時刻から取ると撮るたびに絵が変わるので、固定値を渡す。
+ * 0.45 は「1 分の半ばあたり」で、線の頭が中央付近に来て形が分かりやすい。
+ */
+private val secondsProgress = mutableFloatStateOf(0.45f)
 
 private val weather = WeatherSnapshot(
     placeName = "和光市",
@@ -71,6 +78,7 @@ private val baseState = DeckUiState(
 private fun ClockDay() {
     ClockScreen(
         nowState = nowState,
+        secondsProgress = secondsProgress,
         state = baseState,
         palette = DeckPalette.Day,
         onWeatherClick = {},
@@ -88,6 +96,7 @@ private fun ClockDay() {
 private fun ClockNight() {
     ClockScreen(
         nowState = nowState,
+        secondsProgress = secondsProgress,
         state = baseState.copy(mode = DeckMode.NIGHT),
         palette = DeckPalette.Night,
         onWeatherClick = {},
@@ -108,6 +117,7 @@ private fun ClockNight() {
 private fun ClockWithoutWeather() {
     ClockScreen(
         nowState = nowState,
+        secondsProgress = secondsProgress,
         state = baseState.copy(weather = null),
         palette = DeckPalette.Day,
         onWeatherClick = {},

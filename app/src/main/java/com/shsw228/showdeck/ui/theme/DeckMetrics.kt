@@ -53,8 +53,13 @@ object DeckMetrics {
  * Android Auto の決まり。太字は避け、medium も控えめに使う。
  */
 object DeckType {
-    /** 時計。この端末の主役なので基準の外。画面高から決める。 */
-    const val CLOCK_HEIGHT_RATIO = 0.42f
+    /**
+     * 時計。この端末の主役なので基準の外。画面高から決める。
+     *
+     * 上下に帯が余って見えたので 0.42 から上げた。3m から読むものなので、
+     * 大きくして困ることがない。上側の余白は主役を目立たせるために残す。
+     */
+    const val CLOCK_HEIGHT_RATIO = 0.52f
 
     val Display = 56.sp
     val Headline = 40.sp

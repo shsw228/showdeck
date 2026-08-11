@@ -68,6 +68,9 @@ Android 化した Echo Show 5 第2世代（`cronos`）向けの常駐ダッシ�
 960×480・密度 195 という特殊な画面で、レイアウト崩れは実機でしか起きなかった。
 
 - Preview は `app/src/screenshotTest/` に置く。`@PreviewTest` と `device = DEVICE_SPEC` を付ける
+- **描く内容を実時刻から作らない。** 秒の線を内部で `System.currentTimeMillis()` から出していたら、撮るたびに絵が変わって検証が落ちた。時刻に依存する値は引数で受け取り、Preview から固定値を渡す
+- **常時動くアニメーションを足したら CPU を測る。** アイドル時 1 コアの端末で、60fps の線 1 本が 39% を食った（README の実測表を参照）。`adb shell top -n 3 -d 5 -b -p $(adb shell pidof com.shsw228.showdeck)` で定常値を見る。起動直後は作業が混ざるので 30 秒は待つ
+- 消灯中はアニメーションを止める。真っ暗な画面のために CPU を起こし続けない
 - `dpi=195` を外さない。既定の 160dpi だと 1dp = 1px になり、実機と字詰まりが変わって意味がない
 - 参照画像は `app/src/screenshotTestDebug/reference/` にコミットする
 - 検証は `./gradlew :app:validateDebugScreenshotTest`

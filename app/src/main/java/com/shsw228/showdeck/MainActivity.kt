@@ -32,6 +32,7 @@ import com.shsw228.showdeck.ui.AlertOverlay
 import com.shsw228.showdeck.ui.ClockScreen
 import com.shsw228.showdeck.ui.ControlOverlay
 import com.shsw228.showdeck.ui.ForecastOverlay
+import com.shsw228.showdeck.ui.rememberSecondsProgress
 import com.shsw228.showdeck.ui.theme.paletteFor
 import com.shsw228.showdeck.weather.WeatherRepository
 import com.shsw228.showdeck.web.WebAuth
@@ -135,6 +136,11 @@ class MainActivity : ComponentActivity() {
         ) {
             ClockScreen(
                 nowState = nowState,
+                // 消灯中はフレームを回さない。真っ暗な画面のために CPU を
+                // 起こし続ける理由がなく、この端末はアイドル時 1 コアしかない。
+                secondsProgress = rememberSecondsProgress(
+                    animate = state.mode != DeckMode.BLACKOUT,
+                ),
                 state = state,
                 palette = palette,
                 onWeatherClick = { showForecast = true },
