@@ -7,12 +7,12 @@ Android 化した Echo Show 5 第2世代（`cronos`）向けの常駐ダッシ�
 作業前に必ず踏まえること。一般的な Android アプリの常識が通用しない箇所がある。
 
 - **960×480 / 密度 195（≒ 788×394 dp）/ 5.5 インチ / 視距離 1〜3m**。寸法は「寸法と文字」の節に従う
-- **RAM が少ない**。material3・WebView・大きな画像ライブラリを安易に入れない。依存を足すときは理由をコメントに残す
+- **RAM が少ない**。WebView や大きな画像ライブラリを安易に入れない。依存を足すときは理由をコメントに残す。material3 は入れてある（自前で ripple や Switch を作るほうが損だった）
 - **常時表示**。毎秒の再コンポーズを避ける。時刻は `State` のまま末端へ渡し、`derivedStateOf` で実際に変わったときだけ再コンポーズさせる
 - **輝度は sysfs を直接持っている**。ウィンドウ輝度も `Settings.System.SCREEN_BRIGHTNESS` も実機では十分に暗くならなかった（README の実測表を参照）。DisplayPowerController が書き戻すので、定期的に押し戻す前提で組む
 - **ABI は armeabi-v7a のみ**。ROM が 32bit なので arm64 のネイティブライブラリを入れない
 - **暗い部屋で使う**。新しい画面を足すときは夜間パレットでの見え方を必ず確認する。例外は発報画面で、そこだけは常に明るい色を使う（夜中のアラームが読めないと用をなさない）
-- **アイコンは画像を持たず Canvas で描く**。ビットマップは夜間の赤単色に追従できない。線画だと重なった弧が見えて潰れるので塗りにする
+- **アイコンは `material-icons-extended` から借りる**。自前で描かない
 - **ストア配布しない**。`targetSdk = 28` は意図的。上げると Android 10 以降の制約が復活するので、上げる理由がない限り触らない
 
 ## プラットフォーム署名が前提
@@ -49,22 +49,24 @@ Android 化した Echo Show 5 第2世代（`cronos`）向けの常駐ダッシ�
 - API キーの類は**リポジトリにも APK にも入れない。** Web 設定画面から入れ、`Secrets` で暗号化して DataStore に置く
 - 秘密は `ApiKey` のような `toString()` を潰した型で包む。`DeckSettings` はまるごとログに出しており、素の `String` で持つと `/logs` から平文が読める
 - 設定画面に既存の値を書き戻さない。伏せ字を出し、空なら現状維持にする
-- **Web 設定画面の経路を増やしたら認証を通すこと。** 認証は `serve()` の先頭で一括して行っている。パスごとに書く形にしない
+- **Web 設定画面に認証は無い。** 宅内 LAN 前提。system UID で動くぶん触れる範囲が広いので、外に出す段階になったら戻す
+- **`/api/` で状態を変える経路は POST に限る。** mDNS を巡回する機器やブラウザの先読みでタイマーが動き出す
 - **`hidden_api_policy` を緩めない。** 端末上の全アプリの制限まで下がる。ShowDeck はリフレクションを使っていない
 
 ## 寸法と文字
 
-**Android Auto の指針に従う。** `ui/theme/DeckMetrics.kt` に定数がある。
+`ui/theme/DeckMetrics.kt` と `DeckType.kt` に定数がある。
 
-- 押せるものは **76dp 以上**。`DeckMetrics.TouchTarget` を使う
-- 主要な情報の文字は **24sp 以上**（`DeckType.Body`）。それ未満は `DeckType.Caption` で補足だけ
-- 4dp グリッド。`DeckMetrics.Gap*` を使い、生の `dp` を散らさない
+- 押せるものは **44dp 以上**。`DeckMetrics.ButtonHeight` / `ButtonHeightSm` を使う
+- 4dp グリッド。`DeckMetrics.Space1..6` を使い、生の `dp` を散らさない
+- 文字は役割で持つ（`Display` / `Numeral` / `Body` / `Meta`）。段を増やす前に既存のどれとも違って見えるか確かめる
 - 太字を使わない。medium も控えめに
-- **「画面高の何%」で寸法を決めない。** 密度が読めなかった頃の名残で、実測が出た以上は基準を割る（実際に 53dp / 20sp になっていた）。例外は時計だけ
+- **「画面高の何%」で寸法を決めない。** 実測（密度 195 / 788×394dp）が出ている
 - **収まり方を自分で計算しない。レイアウトにやらせる。** 時計を `weight` の箱に入れたせいで箱幅と文字幅の差分が生まれ、それを埋めるために「係数を決め打ち」→「実機のスクリーンショットを測って係数を出す」→「`TextMeasurer` で測る」と三段階も回り道した。正解は箱を作らないことだった。**数値を合わせる作業が始まったら、まず構造を疑う**
 - **溢れたら文字を小さくするのではなく、出す情報を減らす。** 入る量はその枠の大きさで決まる。どの並べ方でも同じ中身を出そうとするのが間違い（天気タイルに `compact` を足したのがこれ）
 - **デザインから写すのは構造と階層であって寸法ではない。** `claude.ai/design` のプロジェクトは 960×480 の**画素**で描かれている。dp キャンバスは 788×394 なので、そのまま dp にすると溢れる。4dp グリッドに載せ直し、見分けのつかない段は畳む（数字の 7 段 → 3 段）
-- **アイコンは自前で描かない。** `material-icons-extended` から `ImageVector` だけ借りて foundation の `Image` に渡す（material ランタイムは入らない）。R8 が未使用ぶんを落とすので APK 増分は小さい。なお `Foggy` `PartlyCloudyDay` などの Material Symbols 名は旧セットに無い
+- **プラットフォームが持っている部品を自前で作らない。** `Card` / `Button` / `Switch` / `SegmentedButton` / `LinearProgressIndicator` / `CircularProgressIndicator` / `Icon` / `Text` を使う。押下の alpha や時間を定数で置いた時期があったが、端末のアニメーション設定やモーション低減を無視することになる。配色は `DeckTheme` が `DeckPalette` から `ColorScheme` を作って渡す（`*Container` まで埋めないと material の既定色が出る）
+- `material-icons-extended` は旧セット。`Foggy` `PartlyCloudyDay` などの Material Symbols 名は無い
 
 ## 端末を調べるとき
 
@@ -116,6 +118,7 @@ Android の推奨アーキテクチャに沿っている。UI 層（Compose + `D
 
 - **状態と処理は `DeckViewModel` に置く。** Activity は UI のホストと Context 依存の生成だけ。以前は Activity に `LaunchedEffect` が 11 個並んでいた
 - **`DeckViewModel` に `Context` を持たせない。** Context が要るものは Activity 側で作って渡す。実機なしで組み立てられる状態を保つ
+- **設定に依存する取得は、設定が届いてから走らせる。** 起動時に一度スナップショットを読む形にしたら、DataStore の初回値が届く前で購読先が空になり、カレンダーが 15 分間取得されなかった
 - **現在時刻は `uiState` に混ぜない。** 毎秒変わるものを入れると、状態を読む階層が丸ごと毎秒再コンポーズされる。`DeckViewModel.now` という別の流れにしてある
 - **グローバルな可変シングルトンを作らない。** 状態の持ち主が画面と二重になる（`AlertCenter` でやって作り直した）
 - **Hilt は入れていない。** 依存は ViewModel の 5 つだけで、注入器を足す利点より 1GB 機での依存とビルド時間の増加が勝る。増えてきたら再考する
@@ -123,7 +126,8 @@ Android の推奨アーキテクチャに沿っている。UI 層（Compose + `D
 
 ## 設定の書き込み
 
-- **`SettingsStore.update()` に画面側の `DeckSettings` をそのまま渡すときは、DataStore の最初の値が届いているか確かめる。** 届く前は既定値なので、丸ごと書き戻すと API キーも地点も既定に潰れる（実際に API キーを消した）
+- **`SettingsStore.update()` に画面側の `DeckSettings` をそのまま渡すときは、DataStore の最初の値が届いているか確かめる。** 届く前は既定値なので、丸ごと書き戻すと API キーも地点も既定に潰れる
+- **全キー一括書き込みの経路を外部に晒さない。** Web の `/save` は checkbox を `containsKey` で判定するので、部分的な POST は消灯・アラーム・24 時間表記を黙って OFF にする
 - 一部のキーだけを変えたいときは `ensureWebPassword()` のように DataStore の編集トランザクション内で当該キーだけを触る
 
 ## Build, Test, and Development Commands
@@ -154,7 +158,7 @@ debug ビルドは `applicationId` に `.debug` が付く。スクリプトは r
 
 ロジックは `app/src/test/` にプレーンなユニットテストを置く。**時間に依存する判定を実機で確かめない。** 日付をまたぐ夜間判定やポモドーロの「4 回目の作業の後だけ長い休憩」は、実機で試すと数時間かかる。純粋関数に切り出して境界を固める。
 
-UI は `app/src/screenshotTest/` の Preview で撮る（「UI を変えたら」の節を参照）。実機確認は `./scripts/check-device.sh` の出力と、端末の長押しで出る操作パネルで行う。
+UI は `app/src/screenshotTest/` の Preview で撮る（「UI を変えたら」の節を参照）。**Preview は `DeckTheme` を通すこと。** 通さないと material の部品が既定色で写り、実機と違う絵を確認したことになる。実機の状態確認は `./scripts/check-device.sh` と Settings タブで行う。
 
 ## Commit & Pull Request Guidelines
 
