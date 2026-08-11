@@ -16,11 +16,12 @@ import java.time.LocalDate
 import java.time.LocalTime
 
 /**
- * 端末内の設定用 HTTP サーバ。
+ * 端末内の設定用 HTTP サーバ。PC やスマホのブラウザから
+ * `http://<端末IP>:8080` を開く。
  *
- * この端末の設計方針は「端末上で設定を触らせない」。5.5 インチを指でつつく
- * 作業をゼロにするのが目的で、この機能の費用対効果が一番高い。
- * PC やスマホのブラウザから `http://<端末IP>:8080` を開いて設定する。
+ * **文字を打つものはここ**（ICS の URL、API キー、地名）。5.5 インチで
+ * 文字入力をさせない。押して即座に効くもの（明るさ、表示の選び方、時間帯）は
+ * 端末の Settings タブにもある。
  *
  * 状態は自分で持たず [DeckViewModel] から読む。
  *
@@ -251,46 +252,121 @@ private fun renderIndex(state: DeckUiState): String {
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>ShowDeck 設定</title>
 <style>
-  :root { color-scheme: dark; }
-  body { font: 15px/1.7 -apple-system, "Hiragino Sans", sans-serif;
-         margin: 0; padding: 24px; background: #0b0c0e; color: #e8e4da; }
-  main { max-width: 640px; margin: 0 auto; }
-  h1 { font-size: 20px; margin: 0 0 4px; }
-  h2 { font-size: 14px; margin: 28px 0 8px; color: #9aa0a6; font-weight: 600; }
-  .sub { color: #6b7075; margin: 0 0 20px; font-size: 13px; }
-  fieldset { border: 1px solid #24262a; border-radius: 8px; padding: 12px 16px; margin: 0 0 16px; }
-  legend { color: #9aa0a6; font-size: 13px; padding: 0 6px; }
+  /* 端末の画面と同じ語彙で組む。黒地、わずかに浮いたカード、ティールの主色。
+     見た目が揃っていると、どちらを触っているか迷わない。 */
+  :root {
+    color-scheme: dark;
+    --ground: #000;
+    --card: #0f1518;
+    --line: #233037;
+    --ink: #e9f1f3;
+    --ink-2: #a9c4ce;
+    --ink-3: #6e8797;
+    --tide: #1aa39a;
+    --tide-ink: #5fc9bf;
+    --ok: #6fbf73;
+    --ng: #b4564a;
+    --radius: 14px;
+    --mono: ui-monospace, "SF Mono", "JetBrains Mono", Menlo, monospace;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; padding: 20px 16px 64px;
+    background: var(--ground); color: var(--ink);
+    font: 15px/1.6 system-ui, -apple-system, "Hiragino Sans", sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+  main { max-width: 760px; margin: 0 auto; }
+
+  header { margin: 0 0 20px; }
+  h1 { font-size: 22px; font-weight: 700; letter-spacing: -.01em; margin: 0 0 12px; }
+
+  /* 状態は数字を主役にした小さなタイルで並べる。文章で書くと読み飛ばす。 */
+  .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(110px, 1fr));
+           gap: 8px; margin: 0; padding: 0; list-style: none; }
+  .stats li { background: var(--card); border-radius: var(--radius); padding: 10px 12px; }
+  .stats b { display: block; font-size: 10px; font-weight: 800; letter-spacing: .12em;
+             text-transform: uppercase; color: var(--tide); margin: 0 0 4px; }
+  .stats var { font-style: normal; font-family: var(--mono); font-size: 19px; color: var(--ink); }
+
+  /* 節はカード。fieldset のままだが枠線ではなく面で区切る。 */
+  fieldset { border: 0; background: var(--card); border-radius: var(--radius);
+             padding: 16px 18px 18px; margin: 16px 0 0; }
+  legend { float: left; width: 100%; padding: 0; margin: 0 0 12px;
+           font-size: 11px; font-weight: 800; letter-spacing: .12em;
+           text-transform: uppercase; color: var(--tide); }
+  legend + * { clear: both; }
+
   label { display: flex; justify-content: space-between; align-items: center;
-          gap: 16px; padding: 7px 0; }
-  label span { flex: 1; }
-  input[type=time], input[type=number] { background: #16181b; color: #e8e4da;
-          border: 1px solid #2c2f34; border-radius: 6px; padding: 6px 8px; width: 110px; }
-  input[type=checkbox] { width: 18px; height: 18px; }
-  textarea { width: 100%; background: #16181b; color: #e8e4da; border: 1px solid #2c2f34;
-          border-radius: 6px; padding: 8px; font: 14px/1.6 ui-monospace, monospace; }
-  button { background: #2b6cb0; color: #fff; border: 0; border-radius: 6px;
-           padding: 10px 20px; font-size: 15px; cursor: pointer; }
+          gap: 16px; padding: 9px 0; border-bottom: 1px solid var(--line); }
+  label:last-of-type { border-bottom: 0; }
+  label span { flex: 1; color: var(--ink-2); }
+
+  input[type=time], input[type=number], input[type=text], select {
+    background: var(--ground); color: var(--ink);
+    border: 1px solid var(--line); border-radius: 999px;
+    padding: 8px 14px; min-width: 128px; font: inherit;
+  }
+  input[type=number], input[type=time] { font-family: var(--mono); }
+  select { appearance: none; padding-right: 32px;
+           background-image: linear-gradient(45deg, transparent 50%, var(--ink-3) 50%),
+                             linear-gradient(135deg, var(--ink-3) 50%, transparent 50%);
+           background-position: calc(100% - 18px) 52%, calc(100% - 13px) 52%;
+           background-size: 5px 5px, 5px 5px; background-repeat: no-repeat; }
+  input:focus, select:focus, textarea:focus { outline: 2px solid var(--tide); outline-offset: 1px; }
+
+  /* チェックボックスは行ごと押せるように大きく取る。 */
+  input[type=checkbox] { width: 22px; height: 22px; accent-color: var(--tide); }
+
+  textarea { width: 100%; background: var(--ground); color: var(--ink);
+             border: 1px solid var(--line); border-radius: var(--radius);
+             padding: 12px; font: 13px/1.7 var(--mono); resize: vertical; }
+
+  button { background: var(--tide); color: #04262b; border: 0; border-radius: 999px;
+           padding: 12px 26px; font: inherit; font-weight: 700; cursor: pointer; }
+  button:hover { background: var(--tide-ink); }
+  button.secondary { background: transparent; color: var(--ink-2);
+                     border: 1px solid var(--line); }
+  button.secondary:hover { color: var(--ink); border-color: var(--ink-3); }
+
+  /* 保存は下に貼り付ける。長い一枚ものなので、末尾まで送らせない。 */
+  .save { position: sticky; bottom: 0; margin: 20px -16px -64px;
+          padding: 16px; background: linear-gradient(transparent, var(--ground) 40%); }
+  .save button { width: 100%; padding: 15px; font-size: 16px; }
+
   table { border-collapse: collapse; width: 100%; font-size: 13px; }
-  td { padding: 4px 0; border-bottom: 1px solid #1c1e21; }
-  td:last-child { text-align: right; width: 40px; }
-  .ok { color: #6fbf73; } .ng { color: #b4564a; }
-  a { color: #7aa7d8; }
-  .hint { color: #6b7075; font-size: 12px; margin: 4px 0 0; }
-  .inline { display: inline-flex; gap: 8px; align-items: center; margin: 0 8px 0 0; }
-  input[type=text] { background: #16181b; color: #e8e4da; border: 1px solid #2c2f34;
-          border-radius: 6px; padding: 6px 8px; width: 150px; }
-  button.secondary { background: #3a3d42; }
-  fieldset .sub { margin: 0 0 10px; }
+  td { padding: 7px 0; border-bottom: 1px solid var(--line); color: var(--ink-2); }
+  tr:last-child td { border-bottom: 0; }
+  td:last-child { text-align: right; width: 48px; font-family: var(--mono); }
+  .ok { color: var(--ok); } .ng { color: var(--ng); }
+
+  a { color: var(--tide-ink); text-decoration: none; }
+  a:hover { text-decoration: underline; }
+  .hint { color: var(--ink-3); font-size: 12px; margin: 8px 0 0; }
+  .sub { color: var(--ink-3); font-size: 13px; margin: 0 0 12px; }
+  .inline { display: inline-flex; gap: 8px; align-items: center;
+            margin: 0 8px 8px 0; flex-wrap: wrap; }
+
+  @media (max-width: 520px) {
+    label { flex-direction: column; align-items: stretch; gap: 6px; }
+    label span { color: var(--ink-3); font-size: 13px; }
+    input[type=time], input[type=number], input[type=text], select { width: 100%; }
+  }
 </style>
 </head>
 <body><main>
-<h1>ShowDeck</h1>
-<p class="sub">${state.mode} / ${state.ipAddress ?: "IP 不明"}
-   / バックライト ${Backlight.read() ?: "?"}/${Backlight.max}
-   / 照度 ${state.luxReading?.let { "%.0f lux".format(it) } ?: "—"}</p>
+<header>
+  <h1>ShowDeck</h1>
+  <ul class="stats">
+    <li><b>Mode</b><var>${state.mode}</var></li>
+    <li><b>Backlight</b><var>${Backlight.read() ?: "?"} / ${Backlight.max}</var></li>
+    <li><b>Light</b><var>${state.luxReading?.let { "%.0f".format(it) } ?: "—"}</var></li>
+    <li><b>Address</b><var>${state.ipAddress ?: "?"}</var></li>
+  </ul>
+</header>
 
 <fieldset>
-  <legend>タイマー</legend>
+  <legend>Timer</legend>
   <p class="sub">$timerStatus</p>
   <form method="post" action="/timer" class="inline">
     <input type="number" name="minutes" min="1" max="1440" value="5" required>
@@ -303,7 +379,7 @@ private fun renderIndex(state: DeckUiState): String {
 </fieldset>
 
 <fieldset>
-  <legend>ポモドーロ</legend>
+  <legend>Focus</legend>
   <p class="sub">$pomodoroStatus</p>
   <form method="post" action="/pomodoro" class="inline">
     <button type="submit">開始</button>
@@ -317,7 +393,7 @@ private fun renderIndex(state: DeckUiState): String {
 
 <form method="post" action="/save">
   <fieldset>
-    <legend>天気</legend>
+    <legend>Weather</legend>
     <p class="sub">$weatherStatus</p>
     <label><span>地名（画面に出す）</span><input type="text" name="placeName" value="${s.placeName}"></label>
     <label><span>緯度</span><input type="text" name="weatherLat" value="${s.weatherLat}"></label>
@@ -328,13 +404,13 @@ private fun renderIndex(state: DeckUiState): String {
   </fieldset>
 
   <fieldset>
-    <legend>アラーム（毎日）</legend>
+    <legend>Daily alarm</legend>
     <label><span>使う</span><input type="checkbox" name="alarmEnabled" ${if (s.alarmEnabled) "checked" else ""}></label>
     <label><span>時刻</span><input type="time" name="alarmTime" value="${timeValue(s.alarmMinutes)}"></label>
   </fieldset>
 
   <fieldset>
-    <legend>ポモドーロの長さ</legend>
+    <legend>Focus lengths</legend>
     <label><span>作業（分）</span><input type="number" name="pomoWork" min="1" max="180" value="${s.pomodoroWorkMinutes}"></label>
     <label><span>休憩（分）</span><input type="number" name="pomoShort" min="1" max="60" value="${s.pomodoroShortBreakMinutes}"></label>
     <label><span>長い休憩（分）</span><input type="number" name="pomoLong" min="1" max="120" value="${s.pomodoroLongBreakMinutes}"></label>
@@ -347,7 +423,7 @@ private fun renderIndex(state: DeckUiState): String {
   </fieldset>
 
   <fieldset>
-    <legend>夜間モード（減光して赤単色にする）</legend>
+    <legend>Night mode</legend>
     <label><span>開始</span><input type="time" name="nightStart" value="${timeValue(s.nightStartMinutes)}"></label>
     <label><span>終了</span><input type="time" name="nightEnd" value="${timeValue(s.nightEndMinutes)}"></label>
     <label><span>昼のバックライト (1-255)</span><input type="number" name="dayBacklight" min="1" max="255" value="${s.dayBacklight}"></label>
@@ -356,7 +432,7 @@ private fun renderIndex(state: DeckUiState): String {
   </fieldset>
 
   <fieldset>
-    <legend>消灯（バックライトを 0 にする）</legend>
+    <legend>Blackout</legend>
     <label><span>消灯を使う</span><input type="checkbox" name="blackoutEnabled" ${if (s.blackoutEnabled) "checked" else ""}></label>
     <label><span>開始</span><input type="time" name="blackoutStart" value="${timeValue(s.blackoutStartMinutes)}"></label>
     <label><span>終了</span><input type="time" name="blackoutEnd" value="${timeValue(s.blackoutEndMinutes)}"></label>
@@ -367,7 +443,7 @@ private fun renderIndex(state: DeckUiState): String {
   </fieldset>
 
   <fieldset>
-    <legend>カレンダー (ICS)</legend>
+    <legend>Calendar</legend>
     <p class="sub">$calendarStatus</p>
     <textarea name="icsUrls" rows="4" placeholder="https://calendar.google.com/calendar/ical/.../basic.ics">${s.icsUrls}</textarea>
     <p class="hint">1 行 1 本。仕事と私用を分けているなら両方書く。
@@ -376,7 +452,7 @@ private fun renderIndex(state: DeckUiState): String {
   </fieldset>
 
   <fieldset>
-    <legend>画面</legend>
+    <legend>Display</legend>
     <label><span>ナビの出し方</span>
       <select name="navStyle">
         <option value="RAIL" ${sel(s.navStyle, "RAIL")}>左レール</option>
@@ -393,7 +469,7 @@ private fun renderIndex(state: DeckUiState): String {
     <label><span>秒を出す</span><input type="checkbox" name="showSeconds" ${if (s.showSeconds) "checked" else ""}></label>
   </fieldset>
 
-  <button type="submit">保存</button>
+  <div class="save"><button type="submit">保存</button></div>
 </form>
 
 <h2>権限の状態</h2>

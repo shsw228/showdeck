@@ -33,8 +33,20 @@ fun DeckTheme(
             // 主色。選択中のナビと見出しラベル。
             primary = palette.tide,
             onPrimary = palette.readoutFg,
+            // `*Container` まで埋めないと、埋めなかった枠だけ material の既定色
+            // （薄紫）が出る。SegmentedButton の選択状態と Switch がそれを使う。
+            primaryContainer = palette.tide,
+            onPrimaryContainer = palette.readoutFg,
+
             secondary = palette.tideInk,
             onSecondary = palette.readoutBg,
+            secondaryContainer = palette.tide,
+            onSecondaryContainer = palette.readoutFg,
+
+            tertiary = palette.tideInk,
+            onTertiary = palette.readoutBg,
+            tertiaryContainer = palette.readoutBg,
+            onTertiaryContainer = palette.readoutFg,
 
             // 濃色パネル。material の語彙では「反転した面」が一番近い。
             inverseSurface = palette.readoutBg,
@@ -42,6 +54,9 @@ fun DeckTheme(
 
             error = palette.buoy,
             onError = palette.readoutFg,
+            errorContainer = palette.buoy,
+            onErrorContainer = palette.readoutFg,
+
             outline = palette.line,
             outlineVariant = palette.line,
         )

@@ -9,10 +9,16 @@ import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.BasicText
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.SegmentedButton
+import androidx.compose.material3.SegmentedButtonDefaults
+import androidx.compose.material3.SingleChoiceSegmentedButtonRow
+import androidx.compose.material3.Switch
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -193,8 +199,8 @@ private fun FocusSection(
         )
         Gap(DeckMetrics.Space2)
         Stepper(
-            title = "Rounds before long break",
-            value = "${settings.pomodoroRoundsBeforeLongBreak}",
+            title = "Rounds until long break",
+            value = "${settings.pomodoroRoundsBeforeLongBreak} ×",
             palette = palette,
             onStep = { actions.setPomodoroRounds(settings.pomodoroRoundsBeforeLongBreak + it) },
         )
@@ -336,11 +342,13 @@ private fun StatusPanel(
 // --- 部品 ---
 
 /**
- * 選択肢。ラジオボタンではなく錠剤を並べる。
- * 選択肢が 3 つまでなら並べたほうが、開いて選ぶより速い。
+ * 選択肢。material3 の分割ボタン。
+ *
+ * 3 つ以内なら並べたほうが、開いて選ぶより速い。見た目・押下・選択の
+ * 表現はプラットフォームに任せる。
  */
 @Composable
-private fun <T> Choice(
+private fun <T : Enum<T>> Choice(
     title: String,
     options: List<Pair<T, String>>,
     selected: String,
@@ -349,27 +357,25 @@ private fun <T> Choice(
 ) {
     BasicText(text = title, style = DeckType.BodySm.copy(color = palette.ink2))
     Gap(DeckMetrics.Space2)
-    Row(horizontalArrangement = Arrangement.spacedBy(DeckMetrics.Space2)) {
-        options.forEach { (value, label) ->
-            val active = (value as Enum<*>).name == selected
-            PillButton(
+    SingleChoiceSegmentedButtonRow(Modifier.fillMaxWidth()) {
+        options.forEachIndexed { index, (value, label) ->
+            SegmentedButton(
+                selected = value.name == selected,
                 onClick = { onPick(value) },
-                background = if (active) palette.tide else palette.surface,
-                modifier = Modifier.weight(1f),
-                height = DeckMetrics.ButtonHeightSm,
-                paddingH = DeckMetrics.Space2,
-            ) {
-                ButtonLabel(
-                    text = label,
-                    color = if (active) palette.readoutFg else palette.ink2,
-                    style = DeckType.BodySm,
-                )
-            }
+                shape = SegmentedButtonDefaults.itemShape(index, options.size),
+                label = { Text(label, style = DeckType.BodySm) },
+                icon = {},
+            )
         }
     }
 }
 
-/** ON/OFF。行ごと押せる（小さいスイッチを狙わせない）。 */
+/**
+ * ON/OFF。material3 の [Switch]。
+ *
+ * 行ごと押せるようにしてあるが、つまみ自体も押せる。標準の部品なので、
+ * 状態の見え方も指で触ったときの返りもプラットフォームが面倒を見る。
+ */
 @Composable
 private fun Toggle(
     title: String,
@@ -380,9 +386,9 @@ private fun Toggle(
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(DeckMetrics.Pill)
+            .clip(DeckMetrics.RowShape)
             .tappable { onChange(!on) }
-            .height(DeckMetrics.ButtonHeightSm),
+            .heightIn(min = DeckMetrics.ButtonHeight),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         BasicText(
@@ -390,18 +396,7 @@ private fun Toggle(
             style = DeckType.BodySm.copy(color = palette.ink2),
             modifier = Modifier.weight(1f),
         )
-        Box(
-            modifier = Modifier
-                .width(DeckMetrics.SessionDotWidth)
-                .height(DeckMetrics.BarHeight)
-                .clip(DeckMetrics.Pill)
-                .background(if (on) palette.tide else palette.line),
-        )
-        Gap(DeckMetrics.Space2)
-        BasicText(
-            text = if (on) "ON" else "OFF",
-            style = DeckType.Meta.copy(color = if (on) palette.tideInk else palette.ink3),
-        )
+        Switch(checked = on, onCheckedChange = onChange)
     }
 }
 
@@ -425,13 +420,17 @@ private fun Stepper(
             modifier = Modifier.weight(1f),
         )
         StepButton("−", palette) { onStep(-1) }
-        Gap(DeckMetrics.Space2)
+        // 値は中央寄せ。左寄せだと「25 min」と「5 min」で桁が揃わず、
+        // 増減ボタンとの間隔も行ごとに変わって見える。
         BasicText(
             text = value,
-            style = DeckType.Meta.copy(color = palette.ink),
+            style = DeckType.Meta.copy(
+                color = palette.ink,
+                textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+            ),
+            maxLines = 1,
             modifier = Modifier.width(STEPPER_VALUE_WIDTH),
         )
-        Gap(DeckMetrics.Space2)
         StepButton("＋", palette) { onStep(1) }
     }
 }
@@ -486,7 +485,8 @@ private val HomeLayout.settingLabel: String
     }
 
 private const val HALF_HOUR = 30
-private val STEPPER_VALUE_WIDTH = androidx.compose.ui.unit.Dp(56f)
+/** 「25 min」が中央に収まる幅。 */
+private val STEPPER_VALUE_WIDTH = androidx.compose.ui.unit.Dp(84f)
 
 private val OK = Color(0xFF6FBF73)
 private val NG = Color(0xFFB4564A)

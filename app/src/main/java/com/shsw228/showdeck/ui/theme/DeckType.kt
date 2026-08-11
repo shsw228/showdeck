@@ -97,7 +97,7 @@ object DeckType {
 
     // --- ヘッダ ---
 
-    val ScreenTitle = sans(18, 600)
+    val ScreenTitle = sans(22, 600)
 
     /**
      * 時計。ヘッダ右上の基準点で、画面の主役ではない。
@@ -105,7 +105,7 @@ object DeckType {
      * 行高は詰めない（1.0）。詰めると行箱が字の足元より上で切れ、
      * 下端揃えで隣に置く [ClockSuffix] が足元から落ちる。
      */
-    val Clock = mono(60, 250, tracking = -0.035f, lineHeight = 1f)
+    val Clock = mono(64, 250, tracking = -0.035f, lineHeight = 1f)
 
     /**
      * 秒、または AM/PM。**等幅で持つ。**
@@ -113,9 +113,9 @@ object DeckType {
      * 秒は 1 秒ごとに必ず変わるので、送り幅が揃っていないと
      * 右揃えの時計ごと毎秒横に動く。
      */
-    val ClockSuffix = mono(16, 500)
+    val ClockSuffix = mono(19, 500)
 
-    val DateLine = sans(12, 500, tracking = 0.06f)
+    val DateLine = sans(14, 500, tracking = 0.06f)
 
     // --- ラベル ---
 
@@ -125,21 +125,21 @@ object DeckType {
      * 小さいが字間を開けて全部大文字にするので、本文とは別の階層に読める。
      * 大きさで階層を作らずに済むぶん、タイルの中を数字に使える。
      */
-    val Label = sans(11, 800, tracking = 0.12f)
+    val Label = sans(13, 800, tracking = 0.12f)
 
     /** リング中央のモード表示。ラベルよりさらに字間を開ける。 */
-    val LabelWide = sans(10, 700, tracking = 0.22f)
+    val LabelWide = sans(12, 700, tracking = 0.22f)
 
     // --- 数字 ---
 
     /** その画面でいちばん大きい 1 つ。 */
-    val Display = mono(64, 250, tracking = -0.035f, lineHeight = 1f)
+    val Display = mono(68, 250, tracking = -0.035f, lineHeight = 1f)
 
     /** タイルの主役の数字。 */
-    val Numeral = mono(46, 300, tracking = -0.03f, lineHeight = 1f)
+    val Numeral = mono(50, 300, tracking = -0.03f, lineHeight = 1f)
 
     /** 集計値など、主役ではないが目を引かせたい数字。 */
-    val NumeralSm = mono(34, 300, lineHeight = 1f)
+    val NumeralSm = mono(38, 300, lineHeight = 1f)
 
     /** リング中央。大きさは [RingSpec] が決めるので、ここは型だけ。 */
     fun ring(size: TextUnit) = Flush.copy(
@@ -153,36 +153,36 @@ object DeckType {
     // --- 文章 ---
 
     /** 画面内の主見出し。選択中の予定など。 */
-    val Title = sans(26, 600, tracking = -0.02f)
-    val TitleSm = sans(20, 600, tracking = -0.02f)
+    val Title = sans(28, 600, tracking = -0.02f)
+    val TitleSm = sans(23, 600, tracking = -0.02f)
 
     /** 予定名、タイマー名。名前は太くする。 */
-    val Body = sans(15, 600)
+    val Body = sans(18, 600)
 
     /** 天気の説明など、名前ではない文章。 */
-    val BodyPlain = sans(15, 400, lineHeight = 1.45f)
+    val BodyPlain = sans(18, 400, lineHeight = 1.45f)
 
     /** 一覧の 2 行目。 */
-    val BodySm = sans(13, 600)
+    val BodySm = sans(16, 600)
 
-    val Button = sans(15, 700)
+    val Button = sans(18, 700)
 
     // --- 補足 ---
 
     /** 時刻、場所、件数。数字が混ざるので等幅。 */
-    val Meta = mono(12, 400)
-    val MetaSm = mono(11, 400)
+    val Meta = mono(15, 400)
+    val MetaSm = mono(13, 400)
 
     /** 棒グラフの目盛り。読めなくてよい。形が分かればいい。 */
-    val Tick = mono(9, 400)
+    val Tick = mono(11, 400)
 
     /** 予定の残り時間チップ。 */
-    val Chip = mono(11, 600)
+    val Chip = mono(13, 600)
 
     /** 週ストリップ。曜日と日付で 2 段。 */
-    val WeekDow = sans(11, 700, tracking = 0.14f)
-    val WeekNum = mono(14, 500)
+    val WeekDow = sans(13, 700, tracking = 0.14f)
+    val WeekNum = mono(17, 500)
 
     /** timeline のブロックに入れる予定名。 */
-    val TimelineBlock = sans(11, 600)
+    val TimelineBlock = sans(13, 600)
 }

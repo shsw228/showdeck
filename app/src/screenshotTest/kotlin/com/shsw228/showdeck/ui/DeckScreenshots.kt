@@ -20,6 +20,7 @@ import com.shsw228.showdeck.settings.DeckSettings
 import com.shsw228.showdeck.system.DeviceSetup
 import com.shsw228.showdeck.ui.theme.DeckMetrics
 import com.shsw228.showdeck.ui.theme.DeckPalette
+import com.shsw228.showdeck.ui.theme.DeckTheme
 import com.shsw228.showdeck.weather.DailyForecast
 import com.shsw228.showdeck.weather.HourlyForecast
 import com.shsw228.showdeck.weather.WeatherIconKind
@@ -128,16 +129,20 @@ private fun Deck(
     navStyle: NavStyle = NavStyle.RAIL,
     state: DeckUiState = baseState,
     content: @Composable () -> Unit,
-) = DeckScaffold(
-    destination = destination,
-    navStyle = navStyle,
-    nowState = nowState,
-    clock24 = state.settings.clock24,
-    showSeconds = state.settings.showSeconds,
-    palette = palette,
-    onNavigate = {},
-    content = content,
-)
+) = DeckTheme(palette) {
+    // 実機と同じ経路を通す。テーマを通さずに撮ると、material の部品が
+    // 既定色（薄紫）のまま写り、実機と違う絵を確認したことになる。
+    DeckScaffold(
+        destination = destination,
+        navStyle = navStyle,
+        nowState = nowState,
+        clock24 = state.settings.clock24,
+        showSeconds = state.settings.showSeconds,
+        palette = palette,
+        onNavigate = {},
+        content = content,
+    )
+}
 
 // --- Home（3 通りの並べ方）---
 

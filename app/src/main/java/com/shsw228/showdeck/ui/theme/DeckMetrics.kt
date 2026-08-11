@@ -76,7 +76,7 @@ object DeckMetrics {
     val ButtonHeight = 48.dp
 
     /** 副次的な操作（Reset、プリセット）。 */
-    val ButtonHeightSm = 40.dp
+    val ButtonHeightSm = 44.dp
 
     val ButtonPaddingH = Space6
     val ButtonPaddingHSm = Space4
@@ -132,11 +132,11 @@ object DeckMetrics {
  */
 enum class RingSpec(val size: Dp, val stroke: Dp, val label: androidx.compose.ui.unit.TextUnit) {
     /** Home のタイルの中。 */
-    Compact(64.dp, 4.dp, 14.sp),
+    Compact(72.dp, 5.dp, 17.sp),
 
     /** Home（Focus hero）の主役。 */
-    Medium(108.dp, 7.dp, 32.sp),
+    Medium(112.dp, 8.dp, 34.sp),
 
     /** Focus 画面の主役。 */
-    Large(144.dp, 9.dp, 38.sp),
+    Large(148.dp, 10.dp, 42.sp),
 }
