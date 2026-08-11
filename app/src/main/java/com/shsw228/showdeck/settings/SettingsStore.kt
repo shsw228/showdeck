@@ -63,6 +63,7 @@ class SettingsStore(private val context: Context) {
             prefs[RETURN_AFTER] = settings.returnAfterSeconds
             prefs[HOME_LAUNCHER] = settings.homeLauncher
             prefs[VOLUME_OVERLAY] = settings.volumeOverlay
+            prefs[ALERT_HAPTIC] = settings.alertHapticOnly
         }
     }
 
@@ -109,6 +110,7 @@ class SettingsStore(private val context: Context) {
                 (this[RETURN_AFTER] ?: d.returnAfterSeconds).coerceIn(0, 3600),
             homeLauncher = this[HOME_LAUNCHER] ?: d.homeLauncher,
             volumeOverlay = this[VOLUME_OVERLAY] ?: d.volumeOverlay,
+            alertHapticOnly = this[ALERT_HAPTIC] ?: d.alertHapticOnly,
         )
     }
 
@@ -145,6 +147,7 @@ class SettingsStore(private val context: Context) {
         val RETURN_AFTER = intPreferencesKey("return_after")
         val HOME_LAUNCHER = booleanPreferencesKey("home_launcher")
         val VOLUME_OVERLAY = booleanPreferencesKey("volume_overlay")
+        val ALERT_HAPTIC = booleanPreferencesKey("alert_haptic_only")
     }
 }
 

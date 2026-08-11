@@ -59,13 +59,33 @@ object DeviceAdmin {
      * 設定（`DeckSettings.homeLauncher`）で選ぶ。
      */
     fun pinAsHomeLauncher(context: Context, pinned: Boolean) {
-        if (!isDeviceOwner(context)) return
         if (!pinned) {
-            // 固定を外す。ホームキーを押すと選択ダイアログが出る状態に戻る。
+            // 通常の preferred activity も消す。
+            //
+            // Device Owner の `clearPackagePersistentPreferredActivities` は
+            // **永続設定のほうしか消さない。** 通常の既定が残っていると
+            // ホームキーで選択ダイアログが出ず、外したつもりで ShowDeck に
+            // 戻り続ける。system UID なのでこちらも呼べる。
             runCatching {
-                val dpm = context.getSystemService(Context.DEVICE_POLICY_SERVICE) as DevicePolicyManager
-                dpm.clearPackagePersistentPreferredActivities(component(context), context.packageName)
-            }.onFailure { Log.w(TAG, "ホームアプリ固定の解除に失敗", it) }
+                context.packageManager.clearPackagePreferredActivities(context.packageName)
+            }.onFailure { Log.w(TAG, "既定ホームの解除に失敗", it) }
+
+            if (isDeviceOwner(context)) {
+                runCatching {
+                    val dpm = context.getSystemService(Context.DEVICE_POLICY_SERVICE)
+                        as DevicePolicyManager
+                    dpm.clearPackagePersistentPreferredActivities(
+                        component(context),
+                        context.packageName,
+                    )
+                }.onFailure { Log.w(TAG, "ホームアプリ固定の解除に失敗", it) }
+            }
+            return
+        }
+        if (!isDeviceOwner(context)) {
+            // 固定には Device Owner が要る。無いときは何もしない
+            // （手動で「常時」を選ぶことはできる）。
+            Log.i(TAG, "Device Owner ではないためホームアプリ固定をスキップ")
             return
         }
         runCatching {

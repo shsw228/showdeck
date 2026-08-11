@@ -122,6 +122,9 @@ object DeckConfig {
      */
     const val RETURN_AFTER_SECONDS = 180
 
+    /** 発報を振動だけで済ませるか。既定は鳴らす（アラームは気づかせるもの）。 */
+    const val ALERT_HAPTIC_ONLY = false
+
     /**
      * 独自の音量インジケータを出すか。
      *

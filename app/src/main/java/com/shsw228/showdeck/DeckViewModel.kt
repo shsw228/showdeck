@@ -383,7 +383,7 @@ class DeckViewModel(
         wakeUntil = clock().plusMinutes(ALERT_WAKE_MINUTES)
         recomputeMode()
         backlight.enforce(settings.dayBacklight)
-        alertPlayer.fire(label)
+        alertPlayer.fire(label, settings.alertHapticOnly)
         publishAlertState()
     }
 

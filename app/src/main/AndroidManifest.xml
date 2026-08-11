@@ -35,6 +35,9 @@
     <!-- 天気の地点を現在地から取る。system UID なのでインストール時に付く。 -->
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
 
+    <!-- 発報の振動。マナーモード時は音の代わりにこれだけ出す。 -->
+    <uses-permission android:name="android.permission.VIBRATE" />
+
     <application
         android:allowBackup="false"
         android:icon="@drawable/ic_showdeck"
@@ -66,10 +69,17 @@
             </intent-filter>
 
             <!--
-              LAUNCHER は付けない。system UID で動くアクティビティを
-              任意のアプリから起動できる口になる。開発中の手動起動は
-              `adb shell am start -n` で足りる。
+              アプリ一覧にも出す。ホームアプリとして使うかは設定で選べるので、
+              他のランチャーに切り替えたあとここから戻れないと詰む。
+
+              露出は増えない。HOME を取るために `exported="true"` が必須で、
+              任意のアプリから起動できる状態はすでに開いている。
+              LAUNCHER の有無は一覧に出るかどうかだけの違い。
             -->
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
         </activity>
 
         <receiver

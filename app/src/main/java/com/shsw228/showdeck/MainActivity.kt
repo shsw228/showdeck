@@ -180,6 +180,9 @@ class MainActivity : ComponentActivity() {
                 setHomeLayout = { viewModel.updateSettingsOnDevice { s -> s.copy(homeLayout = it) } },
                 setClock24 = { viewModel.updateSettingsOnDevice { s -> s.copy(clock24 = it) } },
                 setShowSeconds = { viewModel.updateSettingsOnDevice { s -> s.copy(showSeconds = it) } },
+                setAlertHapticOnly = { on ->
+                    viewModel.updateSettingsOnDevice { s -> s.copy(alertHapticOnly = on) }
+                },
                 setVolumeOverlay = { on ->
                     viewModel.updateSettingsOnDevice { s -> s.copy(volumeOverlay = on) }
                 },
@@ -422,7 +425,15 @@ class MainActivity : ComponentActivity() {
 
     override fun onPause() {
         super.onPause()
-        HomeWatchdog.arm(applicationContext, viewModel.uiState.value.settings.returnAfterSeconds)
+        val settings = viewModel.uiState.value.settings
+        // **ホームアプリのときだけ引き戻す。** そうでないなら、この端末は
+        // 普通の Android として使われている。3 分ごとに前面を奪うのは
+        // ダッシュボードの仕事ではない。
+        if (!settings.homeLauncher) {
+            HomeWatchdog.disarm(applicationContext)
+            return
+        }
+        HomeWatchdog.arm(applicationContext, settings.returnAfterSeconds)
     }
 
     override fun onResume() {

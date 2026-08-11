@@ -123,6 +123,7 @@ class WebCtlServer(
             showSeconds = params.containsKey("showSeconds"),
             homeLauncher = params.containsKey("homeLauncher"),
             volumeOverlay = params.containsKey("volumeOverlay"),
+            alertHapticOnly = params.containsKey("alertHapticOnly"),
             returnAfterSeconds = params.int("returnAfter", current.returnAfterSeconds)
                 .coerceIn(0, 3600),
         )
@@ -494,6 +495,8 @@ private fun renderIndex(state: DeckUiState): String {
     <label><span>秒を出す</span><input type="checkbox" name="showSeconds" ${if (s.showSeconds) "checked" else ""}></label>
     <label><span>ホームアプリとして固定</span><input type="checkbox" name="homeLauncher" ${if (s.homeLauncher) "checked" else ""}></label>
     <label><span>独自の音量バーを出す</span><input type="checkbox" name="volumeOverlay" ${if (s.volumeOverlay) "checked" else ""}></label>
+    <label><span>発報は振動だけ</span><input type="checkbox" name="alertHapticOnly" ${if (s.alertHapticOnly) "checked" else ""}></label>
+    <p class="hint">端末のマナーモードは設定に関係なく尊重する。これは鳴らせる状態でも鳴らさないための設定。</p>
     <label><span>他アプリから戻る秒数 (0 で戻さない)</span><input type="number" name="returnAfter" min="0" max="3600" value="${s.returnAfterSeconds}"></label>
     <p class="hint">固定すると選択ダイアログが出なくなり、他のランチャーに奪われない。
        普通の Android 端末としても使うなら切っておく。</p>

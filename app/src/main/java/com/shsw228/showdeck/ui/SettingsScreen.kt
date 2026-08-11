@@ -271,6 +271,10 @@ private fun ScheduleSection(
         Gap(DeckMetrics.Space3)
         Toggle("Daily alarm", settings.alarmEnabled, palette) { actions.setAlarmEnabled(it) }
         Gap(DeckMetrics.Space2)
+        // 端末のマナーモードは設定に関係なく尊重する。これは鳴らせる状態でも
+        // 鳴らさないための設定。
+        Toggle("Vibrate only", settings.alertHapticOnly, palette) { actions.setAlertHapticOnly(it) }
+        Gap(DeckMetrics.Space2)
         Stepper(
             title = "Alarm at",
             value = clockText(settings.alarmMinutes),

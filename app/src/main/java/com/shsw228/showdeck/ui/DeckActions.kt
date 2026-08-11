@@ -69,4 +69,7 @@ data class DeckActions(
 
     /** 独自の音量インジケータを出すか。false なら SystemUI に任せる。 */
     val setVolumeOverlay: (Boolean) -> Unit = {},
+
+    /** 発報を振動だけで済ませるか。 */
+    val setAlertHapticOnly: (Boolean) -> Unit = {},
 )

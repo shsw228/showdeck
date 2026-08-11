@@ -90,6 +90,14 @@ data class DeckSettings(
      * 既定は false（普通の Android 端末としても使えるようにしておく）。
      */
     /**
+     * 発報を振動だけで済ませるか。
+     *
+     * 端末のマナーモードは設定に関係なく尊重する（[com.shsw228.showdeck.alert.AlertPlayer]）。
+     * これは「鳴らせる状態でも鳴らさない」ための設定。
+     */
+    val alertHapticOnly: Boolean,
+
+    /**
      * 音量キーを自分で捌いて独自のインジケータを出すか。
      * false なら SystemUI のスライダに任せる（キーを消費しない）。
      */
@@ -150,6 +158,7 @@ data class DeckSettings(
             clock24 = DeckConfig.CLOCK_24H,
             showSeconds = DeckConfig.SHOW_SECONDS,
             returnAfterSeconds = DeckConfig.RETURN_AFTER_SECONDS,
+            alertHapticOnly = DeckConfig.ALERT_HAPTIC_ONLY,
             volumeOverlay = DeckConfig.VOLUME_OVERLAY,
             homeLauncher = DeckConfig.HOME_LAUNCHER,
         )
