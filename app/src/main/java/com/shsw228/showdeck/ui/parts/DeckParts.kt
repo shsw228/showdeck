@@ -1,13 +1,10 @@
 package com.shsw228.showdeck.ui.parts
 
-import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.interaction.MutableInteractionSource
-import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
@@ -24,15 +21,12 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.text.BasicText
+import androidx.compose.material3.ripple
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.ui.hapticfeedback.HapticFeedbackType
-import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
@@ -87,12 +81,11 @@ private fun Panel(
     content: @Composable ColumnScope.() -> Unit,
 ) {
     Column(
-        // 押下の減光は面の**外側**に置く。clip と background より後ろに
-        // 置くと地の色に効かず、文字だけが薄くなって不自然になる。
+        // clip を先に置く。ripple がこの角丸で切られる。
         modifier = modifier
-            .tappable(onClick)
             .clip(DeckMetrics.TileShape)
             .background(color)
+            .tappable(onClick)
             .padding(padding),
         content = content,
     )
@@ -101,41 +94,19 @@ private fun Panel(
 /**
  * 押せることが分かるタップ。
  *
- * 波紋は使わない（material を入れていないうえ、画面がタイルで埋まっている
- * この構成では主張しすぎる）。代わりに**押している間だけ薄くする**。
- * デザインの `style-hover:opacity:.72` に対応する扱いだが、あちらはマウスの
- * ホバー用で、タッチ端末に等価物は無い。**触って分かるのは押下状態だけ**なので
- * そこへ翻訳する。
+ * **押下の表現はプラットフォームに任せる。** 以前は alpha と時間を定数で
+ * 直指定していたが（`PRESSED_ALPHA = 0.72f` など）、それでは端末の
+ * アニメーション設定やモーション低減の設定を無視することになる。
  *
- * 触覚も返す。据え置きの画面を離れた場所から押すので、指先に返りが無いと
- * 押せたかどうかが画面を見るまで分からない。
+ * `ripple()` の色はテーマの `onSurface` から決まる。[DeckTheme] が
+ * [DeckPalette] から `ColorScheme` を作って渡しているので、ここで色を
+ * 指定する必要はない。
  */
 @Composable
 fun Modifier.tappable(onClick: (() -> Unit)?): Modifier {
     if (onClick == null) return this
-    val interaction = remember { MutableInteractionSource() }
-    val pressed by interaction.collectIsPressedAsState()
-    val haptics = LocalHapticFeedback.current
-
-    // 離すときだけ滑らかに戻す。押した瞬間は即座に沈ませたいので短く。
-    val alpha by animateFloatAsState(
-        targetValue = if (pressed) PRESSED_ALPHA else 1f,
-        animationSpec = tween(if (pressed) PRESS_IN_MILLIS else PRESS_OUT_MILLIS),
-        label = "press",
-    )
-
-    return this
-        .graphicsLayer { this.alpha = alpha }
-        .clickable(interactionSource = interaction, indication = null) {
-            haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-            onClick()
-        }
+    return clickable(interactionSource = null, indication = ripple(), onClick = onClick)
 }
-
-/** 押している間の濃さ。デザインのホバー値（.72）をそのまま押下に使う。 */
-private const val PRESSED_ALPHA = 0.72f
-private const val PRESS_IN_MILLIS = 40
-private const val PRESS_OUT_MILLIS = 160
 
 /**
  * アイコン。

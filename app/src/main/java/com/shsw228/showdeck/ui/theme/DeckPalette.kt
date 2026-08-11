@@ -64,39 +64,58 @@ data class DeckPalette(
         /** 予定の色分け。デザインの `TONES` に対応する。 */
         val EventBlue = Color(0xFF2F6DA4)
 
+        /**
+         * 通常時。**地は黒。**
+         *
+         * デザインには明るい昼の配色もあったが、常時点灯で寝室にも置く端末で
+         * 白い面を光らせ続ける理由がない。黒地なら暗い部屋で眩しくならず、
+         * バックライトを下げたときも文字だけが残る。
+         *
+         * 地を完全な黒（#000000）にしているのは、タイルの `paper` を
+         * わずかに持ち上げるだけで面の区別が付くため。地が灰色だと、
+         * タイルとの差を出すのに `paper` を明るくすることになり、
+         * 画面全体の発光量が上がる。
+         */
         val Day = DeckPalette(
-            ink = Color(0xFF0B2A3A),
-            ink2 = Color(0xFF38566A),
-            ink3 = Color(0xFF6E8697),
-            line = Color(0xFFCBD8D3),
-            surface = Color(0xFFE7EEEB),
-            paper = Color(0xFFFBFDFC),
-            tide = Color(0xFF0E7C7B),
-            tideInk = Color(0xFF0A5A59),
-            seagrass = Color(0xFF3F8F5B),
-            sand = Color(0xFFB9791A),
-            buoy = Color(0xFFE24E1B),
-            readoutBg = Color(0xFF0B2A3A),
-            readoutFg = Color(0xFFFFFFFF),
-            readoutMut = Color(0xFF8FA8B3),
-            brightness = DeckConfig.DAY_BRIGHTNESS,
-        )
-
-        val Night = DeckPalette(
-            ink = Color(0xFFE8F1F3),
+            ink = Color(0xFFE9F1F3),
             ink2 = Color(0xFFA9C4CE),
-            ink3 = Color(0xFF7593A2),
-            line = Color(0xFF1D4A5E),
-            surface = Color(0xFF07202D),
-            paper = Color(0xFF0D3243),
+            ink3 = Color(0xFF6E8797),
+            line = Color(0xFF233037),
+            surface = Color(0xFF000000),
+            paper = Color(0xFF0F1518),
             tide = Color(0xFF1AA39A),
             tideInk = Color(0xFF5FC9BF),
             seagrass = Color(0xFF6FBF8A),
             sand = Color(0xFFD9A24A),
             buoy = Color(0xFFF0714A),
-            readoutBg = Color(0xFF0A5A59),
+            readoutBg = Color(0xFF0A3F3E),
             readoutFg = Color(0xFFFFFFFF),
             readoutMut = Color(0xFF9BD3CE),
+            brightness = DeckConfig.DAY_BRIGHTNESS,
+        )
+
+        /**
+         * 夜間。同じ黒地のまま、載っているものを一段落とす。
+         *
+         * バックライト自体も下げる（[DeckConfig.NIGHT_BACKLIGHT_RAW]）ので、
+         * ここで色をさらに沈めるのは二重の減光になる。それでも下げるのは、
+         * 暗順応した目には raw 1 でも白文字が刺さるため。
+         */
+        val Night = DeckPalette(
+            ink = Color(0xFFA9C4CE),
+            ink2 = Color(0xFF7593A2),
+            ink3 = Color(0xFF4A5F6A),
+            line = Color(0xFF161E22),
+            surface = Color(0xFF000000),
+            paper = Color(0xFF080C0E),
+            tide = Color(0xFF12766F),
+            tideInk = Color(0xFF2E8A83),
+            seagrass = Color(0xFF3F7A55),
+            sand = Color(0xFF8A6528),
+            buoy = Color(0xFF9A4830),
+            readoutBg = Color(0xFF06201F),
+            readoutFg = Color(0xFFC7DEDB),
+            readoutMut = Color(0xFF5E8B87),
             brightness = DeckConfig.NIGHT_BRIGHTNESS,
         )
     }

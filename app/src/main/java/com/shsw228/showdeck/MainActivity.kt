@@ -47,6 +47,7 @@ import com.shsw228.showdeck.ui.NavStyle
 import com.shsw228.showdeck.ui.TimersScreen
 import com.shsw228.showdeck.ui.WeatherScreen
 
+import com.shsw228.showdeck.ui.theme.DeckTheme
 import com.shsw228.showdeck.ui.theme.paletteFor
 import com.shsw228.showdeck.calendar.CalendarRepository
 import com.shsw228.showdeck.weather.WeatherRepository
@@ -167,6 +168,9 @@ class MainActivity : ComponentActivity() {
             )
         }
 
+        // material3 のテーマを敷く。ripple の色や state layer はここから決まる。
+        // 見た目そのものは DeckPalette に従い、material の既定色は使わない。
+        DeckTheme(palette) {
         Box(
             modifier = Modifier
                 .fillMaxSize()
@@ -291,6 +295,7 @@ class MainActivity : ComponentActivity() {
                     onDismiss = { viewModel.dismissAlert() },
                 )
             }
+        }
         }
     }
 

@@ -122,13 +122,23 @@ dependencies {
     // 自前実装だと HTTP パースのバグを抱え込むので、小さくて枯れた実装を借りる。
     implementation(libs.nanohttpd)
 
-    // material3 は意図的に入れていない。1GB 機なので依存とメモリを削り、
-    // 必要な描画は foundation だけで組む。
+    // material3。
     //
-    // アイコンだけは例外で標準のものを借りる。天気 9 種とナビ 5 種を Canvas で
-    // 描いていたが、標準の図形で足りるものを手で持つ理由がない。ここから使うのは
-    // ImageVector（図形データ）だけで、描画は foundation の Image に渡すため、
-    // material のランタイムは APK に入らない。未使用のアイコンは R8 が落とす。
+    // 長らく「1GB 機なので依存とメモリを削る」として入れていなかったが、
+    // その判断は検証されていなかった。material-icons-extended を足しても
+    // APK が +0.2MB しか増えなかった時点で、大きさの根拠は崩れている。
+    //
+    // 入れずに済ませた代償のほうが大きかった。ripple・押下状態・タッチ領域を
+    // 自前で作ることになり、実際に押下フィードバックを手で間違えた
+    // （alpha と時間を定数で直指定していた）。プラットフォームに任せれば、
+    // 端末のアニメーション設定やモーション低減の設定まで面倒を見てくれる。
+    //
+    // 配色が既定と喧嘩する懸念は、ColorScheme を DeckPalette から作って渡す
+    // ことで解決している（ui/theme/DeckTheme.kt）。
+    implementation(libs.androidx.compose.material3)
+
+    // アイコンの図形。天気 9 種とナビ 5 種を Canvas で描いていたが、
+    // 標準の図形で足りるものを手で持つ理由がない。未使用ぶんは R8 が落とす。
     implementation(libs.androidx.compose.icons)
 
     testImplementation(libs.junit)
