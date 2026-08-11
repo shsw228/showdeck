@@ -82,6 +82,14 @@ Android 化した Echo Show 5 第2世代（`cronos`）向けの常駐ダッシ�
   打ったら、そのあとの計測は「素の状態」ではない。戻すか、再起動してから測る
 - **自分のアプリが前面のまま「端末の素の挙動」を測らない。** 没入モードや
   Device Owner のポリシーが効いている
+- **`adb install -r` は動いているアプリを再起動しない。** 旧プロセスが残ったまま
+  新しい挙動を探して「反映されない」と判断した。入れ直したら
+  `kill -9 $(adb shell pidof com.shsw228.showdeck)` してから測る
+- **DataStore のキーは書き込みが起きるまで作られない。** `preferences_pb` に
+  キーが無いことは「その設定が存在しない」ではない。設定を 1 回変えてから見る
+- **この ROM に無い adb コマンドがある。** `cmd audio` `media volume`
+  `pm clear-package-preferred-activities` `cmd package get-home-activities` は
+  いずれも使えなかった。「コマンドが無い」を「機能が無い」と混同しない
 - **無効化パッケージは `enabled=` の数値で見る。** `pm enable` は成功と表示しても
   状態が戻らないことがある（`enabled=3` = `DISABLED_USER`）。`pm default-state` を使い、
   **`package-restrictions.xml` の書き出しは遅延するので 30 秒以上待ってから再起動する。**
