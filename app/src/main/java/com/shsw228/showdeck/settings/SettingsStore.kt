@@ -53,6 +53,7 @@ class SettingsStore(private val context: Context) {
             prefs[POMODORO_AUTO_WORK] = settings.pomodoroAutoStartWork
             prefs[POMODORO_AUTO_BREAK] = settings.pomodoroAutoStartBreak
             prefs[POMODORO_GOAL] = settings.pomodoroDailyGoal
+            prefs[GARBAGE_RULES] = settings.garbageRules
         }
     }
 
@@ -105,6 +106,7 @@ class SettingsStore(private val context: Context) {
             pomodoroAutoStartWork = this[POMODORO_AUTO_WORK] ?: d.pomodoroAutoStartWork,
             pomodoroAutoStartBreak = this[POMODORO_AUTO_BREAK] ?: d.pomodoroAutoStartBreak,
             pomodoroDailyGoal = (this[POMODORO_GOAL] ?: d.pomodoroDailyGoal).coerceIn(1, 24),
+            garbageRules = this[GARBAGE_RULES] ?: d.garbageRules,
         )
     }
 
@@ -133,5 +135,6 @@ class SettingsStore(private val context: Context) {
         val POMODORO_AUTO_WORK = booleanPreferencesKey("pomodoro_auto_work")
         val POMODORO_AUTO_BREAK = booleanPreferencesKey("pomodoro_auto_break")
         val POMODORO_GOAL = intPreferencesKey("pomodoro_goal")
+        val GARBAGE_RULES = stringPreferencesKey("garbage_rules")
     }
 }

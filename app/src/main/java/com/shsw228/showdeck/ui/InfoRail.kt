@@ -28,6 +28,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.unit.dp
 import com.shsw228.showdeck.DeckUiState
+import com.shsw228.showdeck.garbage.GarbageSchedule
 import com.shsw228.showdeck.ui.theme.DeckMetrics
 import com.shsw228.showdeck.ui.theme.DeckPalette
 import com.shsw228.showdeck.ui.theme.DeckType
@@ -65,7 +66,13 @@ fun InfoRail(
     onPomodoroStop: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val pagerState = rememberPagerState(pageCount = { 2 })
+    // ごみは規則を設定したときだけページを増やす。未設定の空ページを
+    // スワイプで踏むと、壊れていると思われる。
+    val garbageRules = remember(state.settings.garbageRules) {
+        GarbageSchedule.parse(state.settings.garbageRules)
+    }
+    val pageCount = if (garbageRules.isEmpty()) 2 else 3
+    val pagerState = rememberPagerState(pageCount = { pageCount })
 
     Row(modifier = modifier.fillMaxHeight()) {
         VerticalPager(
@@ -79,7 +86,7 @@ fun InfoRail(
                     palette = palette,
                     onWeatherClick = onWeatherClick,
                 )
-                else -> PomodoroPage(
+                1 -> PomodoroPage(
                     nowState = nowState,
                     state = state,
                     palette = palette,
@@ -87,6 +94,11 @@ fun InfoRail(
                     onPause = onPomodoroPause,
                     onSkip = onPomodoroSkip,
                     onStop = onPomodoroStop,
+                )
+                else -> GarbagePage(
+                    nowState = nowState,
+                    rules = garbageRules,
+                    palette = palette,
                 )
             }
         }
@@ -98,7 +110,7 @@ fun InfoRail(
             modifier = Modifier.fillMaxHeight(),
             verticalArrangement = Arrangement.Center,
         ) {
-            repeat(2) { index ->
+            repeat(pageCount) { index ->
                 val active = pagerState.currentPage == index
                 Box(
                     Modifier
@@ -106,7 +118,7 @@ fun InfoRail(
                         .clip(CircleShape)
                         .background(if (active) palette.secondary else palette.tertiary),
                 )
-                if (index == 0) Spacer(Modifier.height(DeckMetrics.Gap2))
+                if (index < pageCount - 1) Spacer(Modifier.height(DeckMetrics.Gap2))
             }
         }
     }

@@ -6,11 +6,13 @@ import com.shsw228.showdeck.DeckUiState
 import com.shsw228.showdeck.DeckViewModel
 import com.shsw228.showdeck.settings.DeckSettings
 import com.shsw228.showdeck.settings.minutesToTime
+import com.shsw228.showdeck.garbage.GarbageSchedule
 import com.shsw228.showdeck.settings.timeToMinutes
 import com.shsw228.showdeck.system.ApiKey
 import com.shsw228.showdeck.system.Backlight
 import fi.iki.elonen.NanoHTTPD
 import kotlinx.coroutines.runBlocking
+import java.time.LocalDate
 import java.time.LocalTime
 
 /**
@@ -96,6 +98,7 @@ class WebCtlServer(
             pomodoroAutoStartWork = params.containsKey("pomoAutoWork"),
             pomodoroAutoStartBreak = params.containsKey("pomoAutoBreak"),
             pomodoroDailyGoal = params.int("pomoGoal", current.pomodoroDailyGoal).coerceIn(1, 24),
+            garbageRules = params["garbageRules"]?.trim() ?: current.garbageRules,
         )
         runBlocking { viewModel.updateSettings(updated) }
         Log.i(TAG, "設定を更新: $updated")
@@ -227,6 +230,17 @@ private fun renderIndex(state: DeckUiState): String {
         "API キーが未設定です"
     }
 
+    // 書いた規則がどう解釈されたかを見せる。曜日を打ち間違えても
+    // 画面に出てこないだけで気づけないので、次の収集日をここで返す。
+    val garbageStatus = GarbageSchedule.parse(s.garbageRules).let { rules ->
+        when {
+            rules.isEmpty() -> "未設定（情報レールのページも出ません）"
+            else -> GarbageSchedule.nextCollection(rules, LocalDate.now())
+                ?.let { "次は ${it.date} · ${it.labels.joinToString(" ")}（${rules.size} 件を認識）" }
+                ?: "${rules.size} 件を認識しましたが、当たる日がありません"
+        }
+    }
+
     val caps = state.capabilities
     val capsRows = if (caps == null) {
         "<tr><td colspan=2>取得中</td></tr>"
@@ -267,6 +281,8 @@ private fun renderIndex(state: DeckUiState): String {
   input[type=time], input[type=number] { background: #16181b; color: #e8e4da;
           border: 1px solid #2c2f34; border-radius: 6px; padding: 6px 8px; width: 110px; }
   input[type=checkbox] { width: 18px; height: 18px; }
+  textarea { width: 100%; background: #16181b; color: #e8e4da; border: 1px solid #2c2f34;
+          border-radius: 6px; padding: 8px; font: 14px/1.6 ui-monospace, monospace; }
   button { background: #2b6cb0; color: #fff; border: 0; border-radius: 6px;
            padding: 10px 20px; font-size: 15px; cursor: pointer; }
   table { border-collapse: collapse; width: 100%; font-size: 13px; }
@@ -363,6 +379,15 @@ private fun renderIndex(state: DeckUiState): String {
     <label><span>明かりが点いたら戻す</span><input type="checkbox" name="wakeOnLight" ${if (s.wakeOnLight) "checked" else ""}></label>
     <label><span>戻す照度 (lux)</span><input type="number" name="wakeLux" min="1" max="1000" value="${s.wakeLuxThreshold}"></label>
     <p class="hint">消灯中も画面は点いたままなのでタッチは即座に届く。画面を切るのではなく光を消している。</p>
+  </fieldset>
+
+  <fieldset>
+    <legend>ごみの収集日</legend>
+    <p class="sub">$garbageStatus</p>
+    <textarea name="garbageRules" rows="5" placeholder="燃えるごみ: 火,金&#10;資源: 水&#10;不燃ごみ: 第2水,第4水">${s.garbageRules}</textarea>
+    <p class="hint">1 行 1 品目。曜日は 月火水木金土日、「第2水」で第 2 水曜。
+       読めない行は無視するので、書き間違えても他の行は生きる。
+       空にすると情報レールのページごと消える。</p>
   </fieldset>
 
   <button type="submit">保存</button>

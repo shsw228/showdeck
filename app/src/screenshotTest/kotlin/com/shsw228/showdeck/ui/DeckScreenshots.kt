@@ -1,13 +1,20 @@
 package com.shsw228.showdeck.ui
 
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.dp
 import com.android.tools.screenshot.PreviewTest
 import com.shsw228.showdeck.DeckMode
 import com.shsw228.showdeck.DeckUiState
 import com.shsw228.showdeck.alert.PomodoroPhase
+import com.shsw228.showdeck.garbage.GarbageSchedule
 import com.shsw228.showdeck.alert.PomodoroState
 import com.shsw228.showdeck.settings.DeckSettings
 import com.shsw228.showdeck.system.DeviceSetup
@@ -128,12 +135,28 @@ private fun ClockWithoutWeather() {
     )
 }
 
+/**
+ * レールの各ページは、普段は主画面の背景の上に載る。
+ * 単体で撮ると背景が無く、明るい文字が白地に飛んで確認できない。
+ */
+@Composable
+private fun OnDeck(palette: DeckPalette, content: @Composable () -> Unit) {
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(palette.background)
+            .padding(24.dp),
+    ) {
+        content()
+    }
+}
+
 // --- 情報レールの各ページ ---
 
 @PreviewTest
 @Preview(name = "レール_ポモドーロ未開始", device = DEVICE_SPEC)
 @Composable
-private fun RailPomodoroIdle() {
+private fun RailPomodoroIdle() = OnDeck(DeckPalette.Day) {
     PomodoroPage(
         nowState = nowState,
         state = baseState,
@@ -149,7 +172,7 @@ private fun RailPomodoroIdle() {
 @PreviewTest
 @Preview(name = "レール_ポモドーロ動作中", device = DEVICE_SPEC)
 @Composable
-private fun RailPomodoroRunning() {
+private fun RailPomodoroRunning() = OnDeck(DeckPalette.Day) {
     PomodoroPage(
         nowState = nowState,
         state = baseState.copy(
@@ -165,6 +188,18 @@ private fun RailPomodoroRunning() {
         onPause = {},
         onSkip = {},
         onStop = {},
+    )
+}
+
+/** 今日と、その次の収集日が並ぶ。レール幅で品目名が切れないかを見る。 */
+@PreviewTest
+@Preview(name = "レール_ごみ", device = DEVICE_SPEC)
+@Composable
+private fun RailGarbage() = OnDeck(DeckPalette.Day) {
+    GarbagePage(
+        nowState = nowState,
+        rules = GarbageSchedule.parse("燃えるごみ: 火,金\n資源: 水\n不燃ごみ: 第2水"),
+        palette = DeckPalette.Day,
     )
 }
 

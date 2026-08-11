@@ -87,6 +87,14 @@ object DeckConfig {
     /** 1 日の目標回数。8 回 = 作業 200 分。 */
     const val POMODORO_DAILY_GOAL = 8
 
+    /**
+     * ごみの収集日。空で始める。
+     *
+     * 自治体ごとに違うので既定値を入れても当たらない。空なら
+     * 情報レールのページごと出さないので、未設定でも邪魔にならない。
+     */
+    const val GARBAGE_RULES = ""
+
     /** 端末内 Web 設定画面のポート。 */
     const val WEB_PORT = 8080
 }

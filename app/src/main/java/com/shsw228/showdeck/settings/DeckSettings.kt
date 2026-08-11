@@ -63,6 +63,12 @@ data class DeckSettings(
     val pomodoroAutoStartWork: Boolean,
     val pomodoroAutoStartBreak: Boolean,
     val pomodoroDailyGoal: Int,
+
+    /**
+     * ごみの収集日。1 行 1 品目のテキストで持つ。
+     * 項目ごとに UI を作るより編集が速く、自治体ごとの差も吸収できる。
+     */
+    val garbageRules: String,
 ) {
     val pomodoroConfig: PomodoroConfig
         get() = PomodoroConfig(
@@ -107,6 +113,7 @@ data class DeckSettings(
             pomodoroAutoStartWork = DeckConfig.POMODORO_AUTO_START_WORK,
             pomodoroAutoStartBreak = DeckConfig.POMODORO_AUTO_START_BREAK,
             pomodoroDailyGoal = DeckConfig.POMODORO_DAILY_GOAL,
+            garbageRules = DeckConfig.GARBAGE_RULES,
         )
     }
 }
