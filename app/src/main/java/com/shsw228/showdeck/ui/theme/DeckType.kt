@@ -115,8 +115,14 @@ object DeckType {
      */
     val Clock = mono(60, 250, tracking = -0.035f, lineHeight = 0.9f)
 
-    /** 秒、または AM/PM。時計に添える。 */
-    val ClockSuffix = sans(16, 500)
+    /**
+     * 秒、または AM/PM。時計に添える。
+     *
+     * **等幅で持つ。** Manrope で組んでいたら `11` と `42` で幅が変わり、
+     * 右揃えの時計ごと毎秒横に動いた。秒は 1 秒ごとに必ず変わるので、
+     * 等幅でないと常時ブレることになる。
+     */
+    val ClockSuffix = mono(16, 500)
 
     val DateLine = sans(12, 500, tracking = 0.06f)
 

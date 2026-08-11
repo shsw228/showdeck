@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -151,8 +152,14 @@ private fun DeckHeader(
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .height(DeckMetrics.HeaderHeight)
-            .padding(horizontal = DeckMetrics.HeaderPadding),
+            // 高さは**下限だけ**与える。固定すると、時計と日付行の 2 段が
+            // 収まらなかったときに下端で切れる（実際に切れた）。数値を
+            // 当て直すのではなく、要る高さは中身から決めさせる。
+            .heightIn(min = DeckMetrics.HeaderHeight)
+            .padding(
+                horizontal = DeckMetrics.HeaderPadding,
+                vertical = DeckMetrics.Space2,
+            ),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         if (onBack != null) {
@@ -220,9 +227,12 @@ private fun HeaderClock(
             )
             if (suffix.isNotEmpty()) {
                 Gap(DeckMetrics.Space1)
-                BasicText(
+                // 秒も桁送りする。ただし毎秒動くので転がる時間は短く。
+                // AM/PM のときは数字が無いので、そのまま置き換わるだけ。
+                RollingClock(
                     text = suffix,
                     style = DeckType.ClockSuffix.copy(color = palette.ink3),
+                    rollMillis = SECONDS_ROLL_MILLIS,
                 )
             }
         }
@@ -303,7 +313,7 @@ private fun NavDock(
     }
 }
 
-private val HOUR_24: DateTimeFormatter = DateTimeFormatter.ofPattern("HH:mm", Locale.JAPAN)
-private val HOUR_12: DateTimeFormatter = DateTimeFormatter.ofPattern("hh:mm", Locale.JAPAN)
-private val SECONDS: DateTimeFormatter = DateTimeFormatter.ofPattern("ss", Locale.JAPAN)
-private val DATE_LINE: DateTimeFormatter = DateTimeFormatter.ofPattern("M月d日 (E)", Locale.JAPAN)
+private val HOUR_24: DateTimeFormatter = DateTimeFormatter.ofPattern("HH:mm", Locale.ENGLISH)
+private val HOUR_12: DateTimeFormatter = DateTimeFormatter.ofPattern("hh:mm", Locale.ENGLISH)
+private val SECONDS: DateTimeFormatter = DateTimeFormatter.ofPattern("ss", Locale.ENGLISH)
+private val DATE_LINE: DateTimeFormatter = DateTimeFormatter.ofPattern("EEEE, d MMMM", Locale.ENGLISH)

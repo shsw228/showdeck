@@ -13,9 +13,9 @@ enum class PomodoroPhase {
 
     val label: String
         get() = when (this) {
-            WORK -> "作業"
-            SHORT_BREAK -> "休憩"
-            LONG_BREAK -> "長い休憩"
+            WORK -> "Work"
+            SHORT_BREAK -> "Break"
+            LONG_BREAK -> "Long break"
         }
 
     val isBreak: Boolean get() = this != WORK

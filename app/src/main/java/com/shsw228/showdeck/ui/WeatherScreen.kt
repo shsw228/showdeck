@@ -48,7 +48,7 @@ fun WeatherScreen(
     if (weather == null) {
         Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
             BasicText(
-                text = "天気を取得できていません",
+                text = "Weather unavailable",
                 style = DeckType.Title.copy(color = palette.ink3),
             )
         }
@@ -109,9 +109,9 @@ private fun CurrentPanel(
         Gap(DeckMetrics.Space3)
 
         // 副次的な値は行で並べる。数字を大きくすると主役の気温と競う。
-        Detail("最高", "${weather.highC ?: "--"}°", palette)
-        Detail("最低", "${weather.lowC ?: "--"}°", palette)
-        Detail("降水確率", "${weather.popPercent ?: 0}%", palette)
+        Detail("High", "${weather.highC ?: "--"}°", palette)
+        Detail("Low", "${weather.lowC ?: "--"}°", palette)
+        Detail("Rain", "${weather.popPercent ?: 0}%", palette)
     }
 }
 
@@ -141,10 +141,10 @@ private fun TrendTile(
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Label("Ahead", palette.tide)
-            // 何時間ぶんかは中身から出す。「12 時間」と書いておいて
+            // 何時間ぶんかは中身から出す。「36 時間」と書いておいて
             // 区間が足りない日があると嘘になる。
             BasicText(
-                text = "${weather.hourly.size * HOURS_PER_SLOT} 時間",
+                text = "next ${weather.hourly.size * HOURS_PER_SLOT} h",
                 style = DeckType.Meta.copy(color = palette.ink3),
             )
         }
@@ -187,7 +187,7 @@ private fun ForecastTile(
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     BasicText(
-                        text = if (day.date == today) "今日" else DOW.format(day.date),
+                        text = if (day.date == today) "Today" else DOW.format(day.date),
                         style = DeckType.Body.copy(color = palette.ink),
                         modifier = Modifier.width(DAY_COLUMN),
                     )
@@ -254,4 +254,4 @@ private const val HOURS_PER_SLOT = 3
 private const val MIN_RANGE = 0.08f
 
 private val DAY_COLUMN = androidx.compose.ui.unit.Dp(44f)
-private val DOW: DateTimeFormatter = DateTimeFormatter.ofPattern("E", Locale.JAPAN)
+private val DOW: DateTimeFormatter = DateTimeFormatter.ofPattern("E", Locale.ENGLISH)

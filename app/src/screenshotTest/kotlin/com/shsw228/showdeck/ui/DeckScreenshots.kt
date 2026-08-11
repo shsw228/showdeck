@@ -45,9 +45,9 @@ private val TODAY: LocalDate = NOW.toLocalDate()
 private val nowState = mutableStateOf(NOW)
 
 private val weather = WeatherSnapshot(
-    placeName = "和光市",
+    placeName = "Wako",
     icon = WeatherIconKind.RAIN,
-    description = "適度な雨",
+    description = "Moderate rain",
     currentC = 30,
     highC = 31,
     lowC = 21,
@@ -71,10 +71,10 @@ private val weather = WeatherSnapshot(
  * チップの色分けはここでしか確認できない。
  */
 private val events = listOf(
-    event("a", "朝会", "Meet", 9, 30, 15),
-    event("b", "設計レビュー — ダッシュボードの再構築", "会議室 3", 11, 0, 60),
-    event("c", "1on1", "デスク", 15, 45, 30),
-    event("d", "ファームウェア同期", "Zoom", 17, 0, 60),
+    event("a", "Standup", "Meet", 9, 30, 15),
+    event("b", "Design review — dashboard rebuild", "Room 3", 11, 0, 60),
+    event("c", "1on1", "Desk", 15, 45, 30),
+    event("d", "Firmware sync", "Zoom", 17, 0, 60),
 )
 
 private fun event(
@@ -90,9 +90,9 @@ private fun event(
 }
 
 private val timers = listOf(
-    CountdownTimer(1, "緑茶", Duration.ofMinutes(3), NOW.plusSeconds(96), null),
-    CountdownTimer(2, "パスタ", Duration.ofMinutes(10), null, Duration.ofSeconds(412)),
-    CountdownTimer(3, "ストレッチ", Duration.ofMinutes(5), null, null),
+    CountdownTimer(1, "Green tea", Duration.ofMinutes(3), NOW.plusSeconds(96), null),
+    CountdownTimer(2, "Pasta", Duration.ofMinutes(10), null, Duration.ofSeconds(412)),
+    CountdownTimer(3, "Stretch", Duration.ofMinutes(5), null, null),
 )
 
 private val baseState = DeckUiState(
@@ -110,7 +110,7 @@ private val baseState = DeckUiState(
     ipAddress = "192.168.10.16",
     pomodoro = PomodoroState(PomodoroPhase.WORK, round = 2, endsAt = NOW.plusMinutes(18)),
     pomodoroCompletedToday = 3,
-    focusLabel = "ダッシュボードの再構築",
+    focusLabel = "Dashboard rebuild",
     timers = timers,
     calendar = CalendarFeed(events = events, fetchedAt = NOW),
 )
@@ -268,6 +268,23 @@ private fun TimersEmpty() = Deck(DeckDestination.TIMERS) {
     TimersScreen(emptyList(), NOW, DeckPalette.Day, DeckActions())
 }
 
+/**
+ * 画面に収まる 3 枚を超えた状態。
+ *
+ * 4 枚目以降は横スクロールの奥にある。スクロールできると気づけないと
+ * 消えたように見えるので、隠れている本数が出ているかを見る。
+ */
+@PreviewTest
+@Preview(name = "Timers_溢れ", device = DEVICE_SPEC)
+@Composable
+private fun TimersOverflow() = Deck(DeckDestination.TIMERS) {
+    val many = timers + listOf(
+        CountdownTimer(4, "Rice", Duration.ofMinutes(12), NOW.plusSeconds(500), null),
+        CountdownTimer(5, "Laundry", Duration.ofMinutes(45), null, Duration.ofMinutes(45)),
+    )
+    TimersScreen(many, NOW, DeckPalette.Day, DeckActions())
+}
+
 // --- オーバーレイ ---
 
 @PreviewTest
@@ -297,6 +314,6 @@ private fun Alert() {
             .background(DeckPalette.Day.surface)
             .padding(DeckMetrics.ContentPaddingH),
     ) {
-        AlertOverlay(label = "緑茶", onDismiss = {})
+        AlertOverlay(label = "Green tea", onDismiss = {})
     }
 }

@@ -195,7 +195,7 @@ private fun NextUpStrip(
 
             if (upcoming.isEmpty()) {
                 BasicText(
-                    text = "このあとの予定はありません",
+                    text = "Nothing left today",
                     style = DeckType.BodyPlain.copy(color = palette.ink3),
                 )
                 return@Row
@@ -215,7 +215,7 @@ private fun NextUpStrip(
                     )
                     Gap(DeckMetrics.Space2)
                     BasicText(
-                        text = if (event.allDay) "終日" else TIME.format(event.start),
+                        text = if (event.allDay) "All day" else TIME.format(event.start),
                         style = DeckType.Meta.copy(color = palette.ink3),
                     )
                     Gap(DeckMetrics.Space2)

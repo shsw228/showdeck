@@ -78,12 +78,23 @@ data class CountdownTimer(
 object Countdowns {
 
     /**
-     * 画面に並べられる本数。
+     * 一度に画面へ収まる枚数。**本数の上限ではない。**
      *
-     * Timers 画面は横 3 枚。それ以上は作れても置き場所が無く、
-     * 走っていることを忘れるだけになる。
+     * これを超えたぶんは Timers 画面を横スクロールして見る。
      */
-    const val MAX = 3
+    const val VISIBLE = 3
+
+    /**
+     * 保持する本数の上限。
+     *
+     * 以前は 3 本で打ち止めにして、4 本目を足したら古いものを押し出していた。
+     * 押し出されたタイマーは画面から消えるだけで、走っていたことすら
+     * 分からなくなる。**黙って捨てるくらいなら並べてスクロールさせる。**
+     *
+     * それでも上限を置くのは、押し間違いで増え続けるのを止めるため。
+     * 台所で 8 本を同時に回すことはない。
+     */
+    const val MAX = 8
 
     fun add(
         timers: List<CountdownTimer>,
@@ -92,16 +103,15 @@ object Countdowns {
         now: LocalDateTime,
         id: Long = now.toLocalTime().toNanoOfDay(),
     ): List<CountdownTimer> {
+        if (timers.size >= MAX) return timers
         val fresh = CountdownTimer(
             id = id,
-            label = label.ifBlank { "${minutes}分" },
+            label = label.ifBlank { "$minutes min" },
             total = Duration.ofMinutes(minutes.toLong()),
             endsAt = now.plusMinutes(minutes.toLong()),
             pausedRemaining = null,
         )
-        // 増やしたぶんは古いほうから押し出す。上限で追加できなくなるより、
-        // 直近で入れたものが確実に入るほうが台所では困らない。
-        return (timers + fresh).takeLast(MAX)
+        return timers + fresh
     }
 
     fun update(

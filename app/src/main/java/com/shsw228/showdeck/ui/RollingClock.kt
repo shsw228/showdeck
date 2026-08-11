@@ -24,14 +24,19 @@ import androidx.compose.ui.text.TextStyle
  * 現れて上へ抜けるほうが増えている感じと一致する。桁上がり（59 → 00）で
  * 下向きに戻すと、そこだけ時間が巻き戻って見える。
  *
- * 渡すのは `HH:mm` までにすること。秒を混ぜると毎秒アニメーションが走り、
- * アイドル時 1 コアのこの端末では CPU が跳ねる。
+ * 秒を流すときは [rollMillis] を短くする。毎秒必ず動くので、長い時間を
+ * かけると事実上ずっとアニメーションしていることになる。アイドル時 1 コアの
+ * この端末では、動いている時間の割合がそのまま CPU に出る。
+ *
+ * **等幅のスタイルを渡すこと。** 桁ごとに別の composable になるので、
+ * 送り幅が揃っていないと数字が変わるたびに全体の幅が動く。
  */
 @Composable
 fun RollingClock(
     text: String,
     style: TextStyle,
     modifier: Modifier = Modifier,
+    rollMillis: Int = ROLL_MILLIS,
 ) {
     Row(modifier = modifier, verticalAlignment = Alignment.CenterVertically) {
         text.forEachIndexed { index, char ->
@@ -45,11 +50,11 @@ fun RollingClock(
                 targetState = char,
                 transitionSpec = {
                     (
-                        slideInVertically(animationSpec = tween(ROLL_MILLIS)) { it } +
-                            fadeIn(animationSpec = tween(ROLL_MILLIS))
+                        slideInVertically(animationSpec = tween(rollMillis)) { it } +
+                            fadeIn(animationSpec = tween(rollMillis))
                         ) togetherWith (
-                        slideOutVertically(animationSpec = tween(ROLL_MILLIS)) { -it } +
-                            fadeOut(animationSpec = tween(ROLL_MILLIS))
+                        slideOutVertically(animationSpec = tween(rollMillis)) { -it } +
+                            fadeOut(animationSpec = tween(rollMillis))
                         )
                 },
                 // 桁の位置で状態を分ける。これが無いと、同じ数字を持つ別の桁が
@@ -63,9 +68,18 @@ fun RollingClock(
 }
 
 /**
- * 転がる時間。
+ * 転がる時間の既定。分の桁向け。
  *
  * 長いと「まだ動いている」と気になり、短いと切り替わりに気づけない。
  * 実機で見て、視距離 3m から動いたと分かる下限がこのあたり。
  */
 private const val ROLL_MILLIS = 420
+
+/**
+ * 秒の桁向け。
+ *
+ * 1 秒に 1 回必ず動くので、既定の 420ms だと半分近くの時間ずっと
+ * アニメーションしていることになる。180ms なら動いている時間は
+ * 2 割弱に収まり、それでも切り替わりは目で追える。
+ */
+const val SECONDS_ROLL_MILLIS = 180

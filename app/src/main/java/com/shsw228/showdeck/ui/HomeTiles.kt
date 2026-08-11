@@ -79,7 +79,7 @@ fun OutsideTile(
         if (weather == null) {
             // 通信が死んでも画面は出す、が原則。空欄を残さず理由を書く。
             BasicText(
-                text = "天気を取得できていません",
+                text = "Weather unavailable",
                 style = DeckType.BodyPlain.copy(color = palette.ink3),
             )
             return@Tile
@@ -130,8 +130,11 @@ fun OutsideTile(
                 style = DeckType.Meta.copy(color = palette.ink3),
                 maxLines = 1,
             )
+            // 傘の絵文字を使っていたが、同梱した 2 書体のどちらにも無く、
+            // 代替グリフに落ちて矢印のように見えた。**字が入っているか
+            // 分からない記号は使わない。**
             BasicText(
-                text = "☂ ${weather.popPercent ?: 0}%",
+                text = "rain ${weather.popPercent ?: 0}%",
                 style = DeckType.Meta.copy(color = palette.ink3),
                 maxLines = 1,
             )
@@ -157,7 +160,7 @@ fun AgendaTile(
         ) {
             Label("Today", palette.tide)
             BasicText(
-                text = "${events.size} 件",
+                text = "${events.size} events",
                 style = DeckType.Meta.copy(color = palette.ink3),
             )
         }
@@ -167,7 +170,7 @@ fun AgendaTile(
         if (events.isEmpty()) {
             Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                 BasicText(
-                    text = if (configured) "予定はありません" else "カレンダー未設定",
+                    text = if (configured) "Nothing scheduled" else "No calendar configured",
                     style = DeckType.BodyPlain.copy(color = palette.ink3),
                 )
             }
@@ -230,9 +233,9 @@ fun RelativeChip(event: CalendarEvent, now: LocalDateTime, palette: DeckPalette)
     val minutes = Duration.between(now, event.start).toMinutes()
     val soon = minutes in 0..60
     val text = when {
-        minutes < 0 -> "終了"
-        minutes < 60 -> "あと ${minutes}分"
-        else -> "あと ${minutes / 60}時間"
+        minutes < 0 -> "done"
+        minutes < 60 -> "in ${minutes} m"
+        else -> "in ${minutes / 60} h"
     }
     Box(
         modifier = Modifier
@@ -287,14 +290,14 @@ fun FocusTile(
                 Label("Focus", palette.readoutMut)
                 Gap(DeckMetrics.Space1)
                 BasicText(
-                    text = pomodoro?.phase?.label ?: "未開始",
+                    text = pomodoro?.phase?.label ?: "Not started",
                     style = DeckType.Body.copy(color = palette.readoutFg),
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                 )
                 Gap(DeckMetrics.Space1)
                 BasicText(
-                    text = "$completedToday / ${settings.pomodoroDailyGoal} 回",
+                    text = "$completedToday of ${settings.pomodoroDailyGoal}",
                     style = DeckType.Meta.copy(color = palette.readoutMut),
                 )
             }
@@ -319,7 +322,7 @@ fun TimersTile(
         ) {
             Label("Timers", palette.tide)
             BasicText(
-                text = "${timers.count { it.isRunning }} 本",
+                text = "${timers.count { it.isRunning }} running",
                 style = DeckType.Meta.copy(color = palette.ink3),
             )
         }
@@ -327,7 +330,7 @@ fun TimersTile(
         if (timers.isEmpty()) {
             Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                 BasicText(
-                    text = "タイマーなし",
+                    text = "No timers",
                     style = DeckType.BodyPlain.copy(color = palette.ink3),
                 )
             }
@@ -405,16 +408,29 @@ fun TemperatureBars(
                     style = DeckType.Tick.copy(color = palette.ink2),
                 )
                 Gap(DeckMetrics.Space1)
+
+                // 棒は**上下のラベルを引いた残り**に収める。
+                //
+                // 以前は棒に直接 fillMaxHeight(比率) を付けていた。Column の
+                // 子に付けた fillMaxHeight は「残り」ではなく親から来た最大高を
+                // 見るので、棒が全体高の 8 割を取り、下の時刻ラベルを押し出して
+                // 切っていた。枠を 1 枚挟めば、比率はその枠の中の話になる。
                 Box(
-                    Modifier
-                        .fillMaxWidth()
-                        // 最低でも少し出す。0 だと棒が消えて欠測に見える。
-                        .fillMaxHeight(
-                            MIN_BAR + (1f - MIN_BAR) * (slot.tempC - low) / span,
-                        )
-                        .clip(DeckMetrics.BlockShape)
-                        .background(palette.tide),
-                )
+                    modifier = Modifier.weight(1f).fillMaxWidth(),
+                    contentAlignment = Alignment.BottomCenter,
+                ) {
+                    Box(
+                        Modifier
+                            .fillMaxWidth()
+                            // 最低でも少し出す。0 だと棒が消えて欠測に見える。
+                            .fillMaxHeight(
+                                MIN_BAR + (1f - MIN_BAR) * (slot.tempC - low) / span,
+                            )
+                            .clip(DeckMetrics.BlockShape)
+                            .background(palette.tide),
+                    )
+                }
+
                 Gap(DeckMetrics.Space1)
                 BasicText(
                     text = HOUR.format(slot.at),
@@ -446,7 +462,7 @@ fun Degrees(
 }
 
 internal fun eventMeta(event: CalendarEvent): String {
-    val time = if (event.allDay) "終日" else TIME.format(event.start)
+    val time = if (event.allDay) "All day" else TIME.format(event.start)
     return if (event.location.isBlank()) time else "$time · ${event.location}"
 }
 
@@ -468,5 +484,5 @@ private const val AGENDA_ROWS = 4
 /** Home のタイマー一覧に出す行数。 */
 private const val TIMER_ROWS = 2
 
-private val HOUR: DateTimeFormatter = DateTimeFormatter.ofPattern("H", Locale.JAPAN)
-internal val TIME: DateTimeFormatter = DateTimeFormatter.ofPattern("H:mm", Locale.JAPAN)
+private val HOUR: DateTimeFormatter = DateTimeFormatter.ofPattern("H", Locale.ENGLISH)
+internal val TIME: DateTimeFormatter = DateTimeFormatter.ofPattern("H:mm", Locale.ENGLISH)

@@ -45,7 +45,7 @@ class AlertSchedulerTest {
     fun `ラベルを省略するとタイマーと表示する`() {
         scheduler.startTimer(1, "  ", now = at(11, 12, 0))
         scheduler.tick(at(11, 12, 1), alarmEnabled = false, alarmMinutesOfDay = 0, pomodoroConfig = noPomodoro)
-        assertEquals("タイマー", scheduler.firing?.label)
+        assertEquals("Timer", scheduler.firing?.label)
     }
 
     @Test
@@ -68,7 +68,7 @@ class AlertSchedulerTest {
     fun `アラームは指定の分に鳴る`() {
         assertFalse(scheduler.tick(at(11, 6, 59), alarmEnabled = true, alarmMinutesOfDay = alarmAt7, pomodoroConfig = noPomodoro))
         assertTrue(scheduler.tick(at(11, 7, 0), alarmEnabled = true, alarmMinutesOfDay = alarmAt7, pomodoroConfig = noPomodoro))
-        assertEquals("アラーム", scheduler.firing?.label)
+        assertEquals("Alarm", scheduler.firing?.label)
     }
 
     @Test

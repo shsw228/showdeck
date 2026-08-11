@@ -1,6 +1,9 @@
 package com.shsw228.showdeck.ui
 
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.BoxWithConstraints
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -8,6 +11,7 @@ import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.text.BasicText
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -28,9 +32,10 @@ import java.time.LocalDateTime
 /**
  * タイマー。
  *
- * 上に走っているもの、下にクイック追加。同時に 3 本まで
- * （[Countdowns.MAX]）。それ以上は置き場所が無く、走っていることを
- * 忘れるだけになる。
+ * 上に走っているもの、下にクイック追加。
+ *
+ * 画面に収まるのは [Countdowns.VISIBLE] 枚で、それを超えたら横スクロール。
+ * 保持できるのは [Countdowns.MAX] 本まで。
  */
 @Composable
 fun TimersScreen(
@@ -43,38 +48,58 @@ fun TimersScreen(
         modifier = Modifier.fillMaxSize(),
         verticalArrangement = Arrangement.spacedBy(DeckMetrics.TileGap),
     ) {
-        Row(
-            modifier = Modifier.fillMaxWidth().weight(1f),
-            horizontalArrangement = Arrangement.spacedBy(DeckMetrics.TileGap),
-        ) {
-            if (timers.isEmpty()) {
-                Tile(palette, Modifier.fillMaxSize()) {
-                    Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                        BasicText(
-                            text = "下から追加してください",
-                            style = DeckType.Title.copy(color = palette.ink3),
-                        )
-                    }
-                }
-            } else {
-                timers.forEach { timer ->
-                    TimerCard(
-                        timer = timer,
-                        now = now,
-                        palette = palette,
-                        actions = actions,
-                        modifier = Modifier.weight(1f).fillMaxHeight(),
+        if (timers.isEmpty()) {
+            Tile(palette, Modifier.fillMaxWidth().weight(1f)) {
+                Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    BasicText(
+                        text = "Add one below",
+                        style = DeckType.Title.copy(color = palette.ink3),
                     )
                 }
-                // 空き枠は詰めない。3 枚ぶんの位置を固定しておくと、
-                // 1 本足すたびに他のカードが動いて押し間違える。
-                repeat(Countdowns.MAX - timers.size) {
-                    Box(Modifier.weight(1f))
-                }
             }
+        } else {
+            TimerCards(timers, now, palette, actions, Modifier.fillMaxWidth().weight(1f))
         }
 
-        QuickAdd(palette, actions)
+        QuickAdd(timers.size, palette, actions)
+    }
+}
+
+/**
+ * カードを横に並べる。**3 枚を超えたら横スクロール。**
+ *
+ * カード幅は「見える幅に [Countdowns.VISIBLE] 枚がちょうど収まる幅」。
+ * 固定 dp を置くと、ナビの出し方で見える幅が変わったときに 2.5 枚に
+ * なったり隙間が余ったりする。枚数から幅を出せば、どの構成でも割り切れる。
+ */
+@Composable
+private fun TimerCards(
+    timers: List<CountdownTimer>,
+    now: LocalDateTime,
+    palette: DeckPalette,
+    actions: DeckActions,
+    modifier: Modifier,
+) {
+    BoxWithConstraints(modifier) {
+        val gaps = DeckMetrics.TileGap * (Countdowns.VISIBLE - 1)
+        val cardWidth = (maxWidth - gaps) / Countdowns.VISIBLE
+
+        Row(
+            modifier = Modifier
+                .fillMaxSize()
+                .horizontalScroll(rememberScrollState()),
+            horizontalArrangement = Arrangement.spacedBy(DeckMetrics.TileGap),
+        ) {
+            timers.forEach { timer ->
+                TimerCard(
+                    timer = timer,
+                    now = now,
+                    palette = palette,
+                    actions = actions,
+                    modifier = Modifier.width(cardWidth).fillMaxHeight(),
+                )
+            }
+        }
     }
 }
 
@@ -143,7 +168,7 @@ private fun TimerCard(
                 paddingH = DeckMetrics.ButtonPaddingHSm,
             ) {
                 ButtonLabel(
-                    text = if (timer.isRunning) "停止" else "開始",
+                    text = if (timer.isRunning) "Pause" else "Start",
                     color = if (timer.isRunning) palette.ink else palette.readoutFg,
                     style = DeckType.Body,
                 )
@@ -154,7 +179,7 @@ private fun TimerCard(
                 height = DeckMetrics.ButtonHeightSm,
                 paddingH = DeckMetrics.ButtonPaddingHSm,
             ) {
-                ButtonLabel("戻す", palette.ink2, DeckType.Body)
+                ButtonLabel("Reset", palette.ink2, DeckType.Body)
             }
         }
     }
@@ -167,7 +192,9 @@ private fun TimerCard(
  * 押させると、手が濡れている場面で 2 タップになる。
  */
 @Composable
-private fun QuickAdd(palette: DeckPalette, actions: DeckActions) {
+private fun QuickAdd(count: Int, palette: DeckPalette, actions: DeckActions) {
+    val full = count >= Countdowns.MAX
+
     Tile(palette, Modifier.fillMaxWidth()) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Label("Quick add", palette.tide)
@@ -179,9 +206,31 @@ private fun QuickAdd(palette: DeckPalette, actions: DeckActions) {
                     height = DeckMetrics.ButtonHeightSm,
                     paddingH = DeckMetrics.ButtonPaddingHSm,
                 ) {
-                    ButtonLabel("${minutes}分", palette.ink, DeckType.Body)
+                    ButtonLabel(
+                        text = "$minutes min",
+                        // 上限に達したら押しても増えないので、薄くして伝える。
+                        color = if (full) palette.ink3 else palette.ink,
+                        style = DeckType.Body,
+                    )
                 }
                 Gap(DeckMetrics.Space2)
+            }
+
+            Box(Modifier.weight(1f))
+
+            // 画面に収まる枚数を超えたら、隠れている本数を出す。
+            // 横スクロールできることに気づけないと、あるはずのタイマーが
+            // 消えたように見える。
+            if (count > Countdowns.VISIBLE) {
+                BasicText(
+                    text = "+${count - Countdowns.VISIBLE} more →",
+                    style = DeckType.Meta.copy(color = palette.ink3),
+                )
+            } else if (full) {
+                BasicText(
+                    text = "max ${Countdowns.MAX}",
+                    style = DeckType.Meta.copy(color = palette.ink3),
+                )
             }
         }
     }

@@ -120,7 +120,7 @@ object IcsParser {
             ?: if (allDay) start.plusDays(1) else start
 
         val uid = find("UID")?.second?.trim().orEmpty().ifEmpty { "$start/${find("SUMMARY")?.second}" }
-        val title = unescape(find("SUMMARY")?.second.orEmpty()).ifEmpty { "(無題)" }
+        val title = unescape(find("SUMMARY")?.second.orEmpty()).ifEmpty { "(untitled)" }
         val location = unescape(find("LOCATION")?.second.orEmpty())
         val length = Duration.between(start, end)
 

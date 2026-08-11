@@ -71,7 +71,7 @@ fun FocusScreen(
                         )
                         Gap(DeckMetrics.Space1)
                         BasicText(
-                            text = (pomodoro?.phase?.label ?: "待機").uppercase(),
+                            text = (pomodoro?.phase?.label ?: "Idle").uppercase(),
                             style = DeckType.LabelWide.copy(color = palette.readoutMut),
                         )
                     }
@@ -83,7 +83,7 @@ fun FocusScreen(
                     Label("Working on", palette.readoutMut)
                     Gap(DeckMetrics.Space1)
                     BasicText(
-                        text = state.focusLabel.ifBlank { "集中" },
+                        text = state.focusLabel.ifBlank { "Focus" },
                         style = DeckType.Title.copy(color = palette.readoutFg),
                         maxLines = 2,
                         overflow = TextOverflow.Ellipsis,
@@ -100,14 +100,14 @@ fun FocusScreen(
                     BasicText(
                         text = buildString {
                             append(state.pomodoroCompletedToday)
-                            append(" / ")
+                            append(" of ")
                             append(config.roundsBeforeLongBreak)
-                            append(" 回 · ")
+                            append(" sessions · ")
                             append(
                                 when {
-                                    pomodoro == null -> "未開始"
-                                    pomodoro.isPaused -> "一時停止"
-                                    else -> "実行中"
+                                    pomodoro == null -> "not started"
+                                    pomodoro.isPaused -> "paused"
+                                    else -> "running"
                                 },
                             )
                         },
@@ -128,7 +128,7 @@ fun FocusScreen(
                             paddingH = DeckMetrics.ButtonPaddingHSm,
                         ) {
                             ButtonLabel(
-                                text = if (pomodoro != null && !pomodoro.isPaused) "一時停止" else "開始",
+                                text = if (pomodoro != null && !pomodoro.isPaused) "Pause" else "Start",
                                 color = DeckPalette.OnReadoutAccent,
                             )
                         }
@@ -138,7 +138,7 @@ fun FocusScreen(
                             modifier = Modifier.weight(1f),
                             paddingH = DeckMetrics.ButtonPaddingHSm,
                         ) {
-                            ButtonLabel("リセット", palette.readoutFg)
+                            ButtonLabel("Reset", palette.readoutFg)
                         }
                         PillButton(
                             onClick = actions.skipPomodoro,
@@ -146,7 +146,7 @@ fun FocusScreen(
                             modifier = Modifier.weight(1f),
                             paddingH = DeckMetrics.ButtonPaddingHSm,
                         ) {
-                            ButtonLabel("スキップ", palette.readoutFg)
+                            ButtonLabel("Skip", palette.readoutFg)
                         }
                     }
                 }
@@ -233,7 +233,7 @@ private fun PresetPanel(
                 style = DeckType.NumeralSm.copy(color = palette.ink),
             )
             Gap(DeckMetrics.Space1)
-            BasicText(text = "分", style = DeckType.Meta.copy(color = palette.ink3))
+            BasicText(text = "min", style = DeckType.Meta.copy(color = palette.ink3))
         }
     }
 }
@@ -247,7 +247,7 @@ private fun PresetPanel(
 private data class Preset(val name: String, val work: Int, val rest: Int)
 
 private val PRESETS = listOf(
-    Preset("標準", 25, 5),
-    Preset("長め", 45, 10),
-    Preset("短め", 15, 3),
+    Preset("Classic", 25, 5),
+    Preset("Long haul", 45, 10),
+    Preset("Short burst", 15, 3),
 )

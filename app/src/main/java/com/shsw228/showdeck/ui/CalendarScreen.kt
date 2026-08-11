@@ -70,9 +70,9 @@ fun CalendarScreen(
             DashedRule(palette.line)
 
             when {
-                !feed.isConfigured -> Placeholder("カレンダー未設定", palette)
+                !feed.isConfigured -> Placeholder("No calendar configured", palette)
                 feed.error != null -> Placeholder(feed.error, palette)
-                events.isEmpty() -> Placeholder("予定はありません", palette)
+                events.isEmpty() -> Placeholder("Nothing scheduled", palette)
                 else -> Column(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -184,7 +184,7 @@ private fun EventRow(
         verticalAlignment = Alignment.CenterVertically,
     ) {
         BasicText(
-            text = if (event.allDay) "終日" else TIME.format(event.start),
+            text = if (event.allDay) "All day" else TIME.format(event.start),
             style = DeckType.Meta.copy(color = palette.ink3),
             modifier = Modifier.width(TIME_COLUMN),
         )
@@ -232,7 +232,7 @@ private fun DetailPanel(
         if (event == null) {
             Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                 BasicText(
-                    text = "予定を選んでください",
+                    text = "Pick an event",
                     style = DeckType.BodyPlain.copy(color = palette.readoutMut),
                 )
             }
@@ -248,7 +248,7 @@ private fun DetailPanel(
         Gap(DeckMetrics.Space2)
         BasicText(
             text = if (event.allDay) {
-                "終日"
+                "All day"
             } else {
                 "${TIME.format(event.start)} – ${TIME.format(event.end)}"
             },
@@ -275,7 +275,7 @@ private fun DetailPanel(
             background = DeckPalette.ReadoutAccent,
             modifier = Modifier.fillMaxWidth(),
         ) {
-            ButtonLabel("この予定で集中する", DeckPalette.OnReadoutAccent)
+            ButtonLabel("Start a focus block", DeckPalette.OnReadoutAccent)
         }
     }
 }
@@ -283,4 +283,4 @@ private fun DetailPanel(
 private const val DAYS_IN_WEEK = 7
 private val SELECTION_BORDER = 1.dp
 private val TIME_COLUMN = 44.dp
-private val DOW: DateTimeFormatter = DateTimeFormatter.ofPattern("E", Locale.JAPAN)
+private val DOW: DateTimeFormatter = DateTimeFormatter.ofPattern("E", Locale.ENGLISH)

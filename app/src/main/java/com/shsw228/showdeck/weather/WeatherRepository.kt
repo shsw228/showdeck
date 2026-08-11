@@ -61,7 +61,7 @@ class WeatherRepository(private val context: Context) {
         val url = URL(
             "https://api.openweathermap.org/data/2.5/$endpoint" +
                 "?lat=${settings.weatherLat}&lon=${settings.weatherLon}" +
-                "&units=metric&lang=ja" +
+                "&units=metric&lang=en" +
                 "&appid=${URLEncoder.encode(settings.owmApiKey.value, "UTF-8")}",
         )
         val connection = (url.openConnection() as HttpURLConnection).apply {

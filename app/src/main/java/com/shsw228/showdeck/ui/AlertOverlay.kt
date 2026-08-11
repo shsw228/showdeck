@@ -59,7 +59,7 @@ fun AlertOverlay(
             )
             Spacer(Modifier.height(gap))
             BasicText(
-                text = "画面をタップして止める",
+                text = "Tap anywhere to stop",
                 style = TextStyle(color = Color(0xFF8A7A63), fontSize = hintSize),
             )
         }

@@ -26,7 +26,9 @@ class AlertPlayer(private val context: Context) {
         tts = TextToSpeech(context) { status ->
             ttsReady = status == TextToSpeech.SUCCESS
             if (ttsReady) {
-                tts?.language = Locale.JAPAN
+                // 読み上げる文言も予定名も英語なので、音声も英語に合わせる。
+                // 日本語の音声で英語を読ませると、まず聞き取れない。
+                tts?.language = Locale.US
             } else {
                 Log.i(TAG, "TTS を初期化できなかった。音だけで通知する")
             }
@@ -54,7 +56,7 @@ class AlertPlayer(private val context: Context) {
 
         if (ttsReady) {
             runCatching {
-                tts?.speak("$label の時間です", TextToSpeech.QUEUE_ADD, null, UTTERANCE_ID)
+                tts?.speak("$label is up", TextToSpeech.QUEUE_ADD, null, UTTERANCE_ID)
             }.onFailure { Log.w(TAG, "読み上げに失敗", it) }
         }
     }

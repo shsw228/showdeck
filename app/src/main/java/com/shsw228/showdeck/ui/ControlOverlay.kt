@@ -79,7 +79,7 @@ fun ControlOverlay(
                     )
                     Gap(DeckMetrics.Space2)
                     BasicText(
-                        text = if (state.mode == DeckMode.DAY) "昼" else "夜",
+                        text = if (state.mode == DeckMode.DAY) "Day" else "Night",
                         style = DeckType.Meta.copy(color = palette.ink3),
                     )
                 }
@@ -90,22 +90,22 @@ fun ControlOverlay(
                         onClick = { onAdjustBrightness(-1) },
                         background = palette.surface,
                         modifier = Modifier.weight(1f),
-                    ) { ButtonLabel("暗く", palette.ink) }
+                    ) { ButtonLabel("Dimmer", palette.ink) }
                     PillButton(
                         onClick = { onAdjustBrightness(1) },
                         background = palette.surface,
                         modifier = Modifier.weight(1f),
-                    ) { ButtonLabel("明るく", palette.ink) }
+                    ) { ButtonLabel("Brighter", palette.ink) }
                 }
 
                 Box(Modifier.weight(1f))
-                Toggle("消灯", state.settings.blackoutEnabled, palette, onToggleBlackout)
+                Toggle("Blackout", state.settings.blackoutEnabled, palette, onToggleBlackout)
                 Gap(DeckMetrics.Space2)
-                Toggle("アラーム", state.settings.alarmEnabled, palette, onToggleAlarm)
+                Toggle("Alarm", state.settings.alarmEnabled, palette, onToggleAlarm)
             }
 
             Readout(palette, Modifier.width(DeckMetrics.SidePanelWidth)) {
-                Label("Web 設定", palette.readoutMut)
+                Label("Web settings", palette.readoutMut)
                 Gap(DeckMetrics.Space2)
                 // ポートまで出す。IP だけ書いてあっても繋げない。
                 BasicText(
@@ -122,20 +122,20 @@ fun ControlOverlay(
                 DashedRule(palette.readoutMut)
                 Gap(DeckMetrics.Space3)
 
-                Label("権限", palette.readoutMut)
+                Label("Permissions", palette.readoutMut)
                 Gap(DeckMetrics.Space2)
                 state.capabilities?.let { caps ->
                     Capability("system UID", caps.isSystemUid, palette)
-                    Capability("Secure 設定", caps.canWriteSecureSettings, palette)
-                    Capability("System 設定", caps.canWriteSystemSettings, palette)
+                    Capability("Secure settings", caps.canWriteSecureSettings, palette)
+                    Capability("System settings", caps.canWriteSystemSettings, palette)
                     Capability("Device Owner", caps.isDeviceOwner, palette)
-                    Capability("バックライト直書き", caps.canWriteBacklight, palette)
+                    Capability("Backlight write", caps.canWriteBacklight, palette)
                 }
 
                 Box(Modifier.weight(1f))
                 state.luxReading?.let {
                     BasicText(
-                        text = "照度 ${it.toInt()} lux",
+                        text = "${it.toInt()} lux",
                         style = DeckType.Meta.copy(color = palette.readoutMut),
                     )
                 }

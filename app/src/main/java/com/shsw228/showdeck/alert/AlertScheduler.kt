@@ -158,7 +158,7 @@ class AlertScheduler {
     }
 
     private companion object {
-        const val DEFAULT_TIMER_LABEL = "タイマー"
-        const val ALARM_LABEL = "アラーム"
+        const val DEFAULT_TIMER_LABEL = "Timer"
+        const val ALARM_LABEL = "Alarm"
     }
 }

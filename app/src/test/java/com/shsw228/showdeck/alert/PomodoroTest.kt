@@ -120,7 +120,7 @@ class PomodoroTest {
 
         assertTrue(scheduler.tick(at(9, 25), false, 0, config))
         // ラベルは「次に何をするか」。部屋の向こうから次の行動が分かる。
-        assertEquals("休憩", scheduler.firing?.label)
+        assertEquals("Break", scheduler.firing?.label)
         assertEquals(PomodoroPhase.SHORT_BREAK, scheduler.pomodoro?.phase)
     }
 
