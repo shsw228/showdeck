@@ -10,6 +10,9 @@ captures/
 .cxx/
 
 local.properties
+
+# 切り分け中に撮った画面や一時ファイル。README に載せるものは docs/screens に置く。
+scratchpad/
 *.apk
 *.aab
 

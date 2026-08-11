@@ -1,8 +1,25 @@
 # ShowDeck
 
+[![build](https://github.com/shsw228/showdeck/actions/workflows/build.yml/badge.svg)](https://github.com/shsw228/showdeck/actions/workflows/build.yml)
+
 Android 化した Amazon Echo Show 5 第2世代（コードネーム `cronos`）を、常駐ダッシュボードに変えるためのアプリ。
 
-大きな時計が主役。天気・予定・タイマーは順に足していく。
+大きな時計が主役。天気・予定・タイマー・ポモドーロを 1 画面ずつ持つ。
+
+![Home](docs/screens/home.png)
+
+## 画面
+
+すべて実機（960×480）の画面をそのまま撮ったもの。夜の配色。
+
+| | |
+|---|---|
+| **Weather**<br>現在の気温、3 時間刻みの推移、5 日間の予報 | **Calendar**<br>週ストリップ、予定一覧、選んだ予定から集中を始められる |
+| ![Weather](docs/screens/weather.png) | ![Calendar](docs/screens/calendar.png) |
+| **Focus**<br>ポモドーロ。リング、セッションの進み、長さのプリセット | **Timers**<br>カウントダウンとクイック追加 |
+| ![Focus](docs/screens/focus.png) | ![Timers](docs/screens/timers.png) |
+| **Settings**<br>押して即座に効く設定、権限の状態、Android の設定への入口 | **Web**<br>同じ設定を LAN のブラウザから。`http://<端末>:8080` |
+| ![Settings](docs/screens/settings.png) | 長い文字列（ICS の URL、API キー）は 5.5 インチで打てない |
 
 ## 設計の前提
 
@@ -12,8 +29,8 @@ Android 化した Amazon Echo Show 5 第2世代（コードネーム `cronos`）
 | 画面 | 960×480、密度 195（≒ 788×394 dp）、5.5 インチ |
 | OS | LineageOS 18.1 / Android 11 (API 30) `userdebug` `test-keys` |
 | SoC / ABI | MediaTek MT8163 / **armeabi-v7a**（ROM が 32bit） |
-| RAM | 973MB（実測で空き 30MB 前後、swap 使用中）|
-| CPU | 4 コアだがアイドル時は 1 コアのみオンライン |
+| RAM | 973MiB。`MemAvailable` は実測 325MB 前後、zram 483MB のうち 62MB 使用 |
+| CPU | 4 コア。**アイドル時は CPU0 だけオンライン**（`/sys/devices/system/cpu/online` = `0`）|
 | バックライト | `/sys/class/leds/lcd-backlight/brightness`（0..255、system:system）|
 | SELinux | **Permissive** |
 | 電源 | 常時給電 |
@@ -23,7 +40,7 @@ Android 化した Amazon Echo Show 5 第2世代（コードネーム `cronos`）
 
 「非力・横長・遠目・触らない」。この 4 つから設計判断がほぼ決まる。
 
-- **触らない** → 設定は端末上でやらせない。adb と、後に入れる Web 設定画面で済ませる
+- **触らない** → 設定は端末でも触れるが（Settings タブ）、長い文字列は Web 設定画面で入れる
 - **遠目** → 情報を詰め込まない。5.5 インチで読めるのは 3〜4 項目まで
 - **非力** → WebView を使わない、毎秒の再コンポーズを避ける、常時動くアニメーションは CPU を測る
 - **常時点灯** → 暗い部屋で眩しくないことが機能要件
@@ -152,21 +169,12 @@ adb wait-for-device && adb uninstall com.shsw228.showdeck
 | ナビ | Home / Weather / Calendar / Focus / Timers を切り替える |
 | タイルをタップ | そのタイルの画面へ移動する |
 | タップ | 消灯中なら一時的に画面を戻す / 発報中なら止める |
-| 音量キー | アラームの音量。`SystemUI` の音量パネルの代わりに自前でインジケータを出す |
+| 音量キー | アラームの音量。自前のインジケータを出すか、`SystemUI` の音量パネルに任せるかを選べる |
 
-## 画面
+## 画面の組み立て
 
 `Echo Dashboard.dc.html`（claude.ai/design のプロジェクト）を元にしている。
 デザインから取ったのは**構造と階層**で、寸法は写していない（[寸法の基準](#寸法の基準)）。
-
-| 画面 | 中身 |
-|---|---|
-| Home | 外の天気・今日の予定・集中・タイマーの 4 タイル。並べ方を 3 通りから選ぶ |
-| Weather | 現在の気温（濃色パネル）、3 時間刻みの推移、5 日間の予報 |
-| Calendar | 週ストリップ、予定一覧、選択した予定の詳細（そのまま集中を始められる）|
-| Focus | ポモドーロ。リング、セッションの進み、長さのプリセット、今日の合計 |
-| Timers | カウントダウン（画面に 3 枚、超えたら横スクロール）とクイック追加 |
-| Settings | 押して即座に効く設定、権限の状態、Android の設定への入口 |
 
 ナビは 3 通り（左レール / 下ドック / タイルのみ）、Home の並べ方も 3 通り
 （一日の流れ / 均等割り / 集中を主役に）。どれが良いかは実際に部屋に置いて
@@ -314,13 +322,43 @@ ICS を購読する。URL は Web 設定画面に 1 行 1 本で書く。仕事�
 タイマーとポモドーロの開始、夜間モードの時間帯、バックライトの値、消灯の設定、
 天気の地点と API キー、アラーム時刻、logcat の閲覧ができる。
 
-**Basic 認証を要求する。** ユーザー名は `showdeck`、パスワードは初回起動時に端末が生成し、
-**画面を長押しすると操作パネルの下部に出る**（`xxxx-xxxx-xxxx` 形式）。ブラウザが記憶するので
-入力は一度きり。パスワードは他の秘密と同じく Keystore の鍵で暗号化して保存する。
+**認証は無い。** 以前は Basic 認証を要求していたが、生成したパスワードを
+5.5 インチの画面から読み取って打ち直す手間が、宅内 LAN で得られる安全に
+釣り合わなかった。**宅内 LAN の外には出さないこと**が前提。
 
-宅内 LAN からしか届かない前提は変えていない。防ぎたいのは「同じネットワークにいる
-別の誰かや別の機器がうっかり触ること」で、このアプリは system UID で動いているぶん
-無認証で置く危険が通常アプリより大きい。
+このアプリは system UID で動くので、無認証で置く危険は通常アプリより大きい。
+LAN に信用できない機器がいる環境では、そもそも置かないほうがよい。
+
+### mDNS と CLI
+
+IP を覚えなくても引けるように DNS-SD で名乗る（`_http._tcp.`、名前は `ShowDeck`）。
+
+**`NsdManager` が広告できるのはサービス名だけで、ホスト名は選べない。**
+名前解決の結果は端末が持つホスト名（この端末では `Android-2.local`）になる。
+`ShowDeck.local` では引けない。
+
+`scripts/showdeck` がその解決を代わりにやる。
+
+```
+$ ./scripts/showdeck host
+http://Android-2.local:8080
+
+$ ./scripts/showdeck state              # いまの状態を JSON で
+$ ./scripts/showdeck pomodoro start     # start|pause|skip|stop
+$ ./scripts/showdeck timer 3 tea        # 3 分のタイマーを "tea" で
+$ ./scripts/showdeck timer-toggle 1234  # 一時停止と再開
+$ ./scripts/showdeck timer-reset 1234   # 頭に戻す
+$ ./scripts/showdeck timer-remove 1234  # 一覧から消す
+$ ./scripts/showdeck stop               # 鳴っている発報を止める
+```
+
+状態を変える操作は POST だけで受ける。GET で副作用が起きると、ブラウザの
+先読みやクローラで勝手に発火する。
+
+**設定の POST（`/save`）に一部だけ送るときは注意。** ブラウザのフォームは
+未チェックの項目を送らないので「無い＝OFF」で読む必要がある。手で送るときは
+フォームだけが付ける隠しフィールドが無いぶん、**書かなかった項目は現状維持**に
+なるようにしてある（そうしないと 1 項目送っただけで他のトグルが全部落ちる）。
 
 ## 秒の表示
 
@@ -466,14 +504,17 @@ Android 化で Alexa が消えたぶん、キッチンタイマーと目覚ま�
 `/proc/<pid>/stat` の `utime + stime` を 60 秒の窓で差分して測った
 （`adb shell top` はパイプ越しに何も返さない）。無操作の定常値。
 
-| 状態 | 1 コア換算 | 4 コア全体 |
-|---|---|---|
-| 秒を出さない | 3.4% | 0.8% |
-| 秒を出す（**既定**）| 14.3% | 3.6% |
+| 状態 | 1 コア換算 |
+|---|---|
+| 秒を出さない | 3.4% |
+| 秒を出す（**既定**）| 14.3% |
+
+**コア数で割ってはいけない。** この端末はアイドル時に CPU0 だけを残して
+残り 3 コアを落とすので、14.3% は「動いている 1 コアの 14%」に近い。
 
 **秒表示が定常負荷の 4 分の 3 を占める。** 1 桁ずつ数字を動かすので毎秒
-再コンポーズと遷移アニメーションが走る。3.6% は常時給電の据え置き機なら
-払える額だが、気になるなら設定の `Show seconds` を切ると 0.8% まで落ちる。
+再コンポーズと遷移アニメーションが走る。常時給電の据え置き機なら払える額だが、
+気になるなら設定の `Show seconds` を切ると 3.4% まで落ちる。
 
 ## root（Magisk）について
 
