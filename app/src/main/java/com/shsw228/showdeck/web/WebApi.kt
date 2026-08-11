@@ -70,6 +70,7 @@ object WebApi {
             when (action) {
                 "toggle" -> viewModel.toggleTimer(id)
                 "reset" -> viewModel.resetTimer(id)
+                "remove" -> viewModel.removeTimer(id)
                 else -> return null
             }
             return ok()

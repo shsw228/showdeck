@@ -5,6 +5,7 @@
 #   showdeck pomodoro start
 #   showdeck timer 3 tea
 #   showdeck timer-toggle 1234
+#   showdeck timer-remove 1234
 #   showdeck stop            # 発報を止める
 #
 # ホスト名は端末側が決めるので `showdeck.local` では引けない。
@@ -44,7 +45,8 @@ case "${1:-state}" in
   timer)        post "/api/timers?minutes=${2:?分}&label=${3:-}" ;;
   timer-toggle) post "/api/timers/${2:?id}/toggle" ;;
   timer-reset)  post "/api/timers/${2:?id}/reset" ;;
+  timer-remove) post "/api/timers/${2:?id}/remove" ;;
   stop)         post /api/alert/stop ;;
   host)         echo "$BASE" ;;
-  *)            echo "使い方: showdeck {state|pomodoro|timer|timer-toggle|timer-reset|stop|host}" >&2; exit 2 ;;
+  *)            echo "使い方: showdeck {state|pomodoro|timer|timer-toggle|timer-reset|timer-remove|stop|host}" >&2; exit 2 ;;
 esac

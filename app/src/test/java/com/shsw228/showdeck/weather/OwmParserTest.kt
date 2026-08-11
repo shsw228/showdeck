@@ -12,7 +12,7 @@ import java.time.ZoneId
 /**
  * OpenWeatherMap の応答の解析。
  *
- * 資料は実際の応答（2026-08-11 の和光市）をそのまま置いている。
+ * 資料は実際の応答をそのまま置いている（地点だけ差し替えてある）。
  * 一番の落とし穴は時刻で、応答の `dt_txt` は UTC のため、そのまま日付として
  * 使うと JST の 15 時が「06:00」として前日に寄る。必ず epoch から現地時刻へ直す。
  */
@@ -44,12 +44,12 @@ class OwmParserTest {
 
     @Test
     fun `地名は設定で上書きできる`() {
-        // OpenWeatherMap は「和光」を返すが、画面には「和光市」と出したい。
+        // OpenWeatherMap の地名は市区までなので、画面用に上書きできること。
         val fromApi = OwmParser.parse(current, forecast, now, jst)
-        assertEquals("和光", fromApi?.placeName)
+        assertEquals("Tokyo", fromApi?.placeName)
 
-        val overridden = OwmParser.parse(current, forecast, now, jst, placeNameOverride = "和光市")
-        assertEquals("和光市", overridden?.placeName)
+        val overridden = OwmParser.parse(current, forecast, now, jst, placeNameOverride = "Tokyo Station")
+        assertEquals("Tokyo Station", overridden?.placeName)
     }
 
     @Test

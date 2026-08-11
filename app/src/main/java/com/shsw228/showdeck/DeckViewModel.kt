@@ -190,6 +190,11 @@ class DeckViewModel(
         _uiState.update { it.copy(timers = Countdowns.update(it.timers, id) { t -> t.reset() }) }
     }
 
+    /** 一覧から消す。間違えて足したものを残しておく理由がない。 */
+    fun removeTimer(id: Long) {
+        _uiState.update { it.copy(timers = Countdowns.remove(it.timers, id)) }
+    }
+
     /** 音量のインジケータを出す。押すたびに待ち直す（前の期限で消さない）。 */
     fun showVolume(current: Int, max: Int) {
         _uiState.update { it.copy(volume = VolumeLevel(current, max)) }

@@ -2,6 +2,7 @@ package com.shsw228.showdeck.ui
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -114,15 +115,17 @@ fun FocusScreen(
                     )
 
                     Gap(DeckMetrics.Space4)
-                    // 3 つを幅で分け合う。主操作を広く取り、残りを二等分。
-                    Row(
+                    // 幅は文字が決める。等分すると `Reset` だけ入り切らず `Res` に
+                    // 切れた。3 つ並べて余らない画面もあるので、入らなければ
+                    // 折り返す（切るより落ちるほうが読める）。
+                    FlowRow(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.spacedBy(DeckMetrics.Space2),
+                        verticalArrangement = Arrangement.spacedBy(DeckMetrics.Space2),
                     ) {
                         PillButton(
                             onClick = actions.togglePomodoro,
                             background = DeckPalette.ReadoutAccent,
-                            modifier = Modifier.weight(1.3f),
                             paddingH = DeckMetrics.ButtonPaddingHSm,
                         ) {
                             ButtonLabel(
@@ -133,7 +136,6 @@ fun FocusScreen(
                         PillButton(
                             onClick = actions.resetPomodoro,
                             background = palette.readoutMut.copy(alpha = TRACK_ALPHA),
-                            modifier = Modifier.weight(1f),
                             paddingH = DeckMetrics.ButtonPaddingHSm,
                         ) {
                             ButtonLabel("Reset", palette.readoutFg)
@@ -141,7 +143,6 @@ fun FocusScreen(
                         PillButton(
                             onClick = actions.skipPomodoro,
                             background = palette.readoutMut.copy(alpha = TRACK_ALPHA),
-                            modifier = Modifier.weight(1f),
                             paddingH = DeckMetrics.ButtonPaddingHSm,
                         ) {
                             ButtonLabel("Skip", palette.readoutFg)

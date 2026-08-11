@@ -54,12 +54,14 @@ object DeckConfig {
     const val PIXEL_SHIFT_RANGE_DP = 6
 
     /**
-     * 天気を取る地点。既定は埼玉県和光市。
-     * Web 設定画面から変更できる。座標は OpenWeatherMap のジオコーディングで引いた値。
+     * 天気を取る地点。既定は東京駅。
+     *
+     * 自分の住所を配布物に埋めたくないので、既定は誰でも知っている場所にしてある。
+     * 実際に使う地点は設定画面（Web か端末）で入れる。現在地から取ることもできる。
      */
-    const val WEATHER_LAT = 35.7817
-    const val WEATHER_LON = 139.6059
-    const val WEATHER_PLACE_NAME = "Wako"
+    const val WEATHER_LAT = 35.6812
+    const val WEATHER_LON = 139.7671
+    const val WEATHER_PLACE_NAME = "Tokyo"
 
     /**
      * 天気の取得間隔。

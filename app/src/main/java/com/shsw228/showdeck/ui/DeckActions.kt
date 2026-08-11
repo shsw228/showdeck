@@ -18,6 +18,9 @@ data class DeckActions(
 
     val toggleTimer: (Long) -> Unit = {},
     val resetTimer: (Long) -> Unit = {},
+
+    /** 一覧から消す。 */
+    val removeTimer: (Long) -> Unit = {},
     val addTimer: (Int) -> Unit = {},
 
     val selectEvent: (String) -> Unit = {},

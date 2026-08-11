@@ -21,6 +21,8 @@ import com.shsw228.showdeck.alert.Countdowns
 import com.shsw228.showdeck.ui.parts.ButtonLabel
 import com.shsw228.showdeck.ui.parts.Gap
 import com.shsw228.showdeck.ui.parts.Label
+import com.shsw228.showdeck.ui.parts.DeckIcon
+import com.shsw228.showdeck.ui.parts.DeckIcons
 import com.shsw228.showdeck.ui.parts.PillButton
 import com.shsw228.showdeck.ui.parts.ProgressBar
 import com.shsw228.showdeck.ui.parts.Tile
@@ -178,6 +180,14 @@ private fun TimerCard(
                 paddingH = DeckMetrics.ButtonPaddingHSm,
             ) {
                 ButtonLabel("Reset", palette.ink2, DeckType.Body)
+            }
+            PillButton(
+                onClick = { actions.removeTimer(timer.id) },
+                background = palette.surface,
+                height = DeckMetrics.ButtonHeightSm,
+                paddingH = DeckMetrics.ButtonPaddingHSm,
+            ) {
+                DeckIcon(DeckIcons.Close, palette.ink3, DeckMetrics.IconInline)
             }
         }
     }

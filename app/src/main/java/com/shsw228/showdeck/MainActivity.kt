@@ -170,6 +170,7 @@ class MainActivity : ComponentActivity() {
                 skipPomodoro = { viewModel.skipPomodoro() },
                 toggleTimer = { viewModel.toggleTimer(it) },
                 resetTimer = { viewModel.resetTimer(it) },
+                removeTimer = { viewModel.removeTimer(it) },
                 addTimer = { viewModel.addTimer(it) },
                 selectEvent = { viewModel.selectEvent(it) },
                 selectDay = { viewModel.selectDay(it) },
@@ -403,9 +404,8 @@ class MainActivity : ComponentActivity() {
      * 独自のバーを出す設定（`volumeOverlay`）のときだけ受ける。false なら
      * キーを通し、`SystemUI` の標準スライダに任せる。
      *
-     * 対象は**再生（メディア）の音**。キーを奪ってアラームだけ動かしていたので、
-     * 音量キーで再生音量が変わらなくなっていた。読み上げもこの流れに乗る。
-     * 発報の音量（`STREAM_ALARM`）は Android の設定から変える。
+     * 対象は**アラームの音**。この端末で音を出すのは発報（アラーム音と読み上げ）
+     * だけで、音楽は流さない。だから音量キーが向く先はアラームでいい。
      */
     override fun onKeyDown(keyCode: Int, event: android.view.KeyEvent?): Boolean {
         // 切ってあるときはキーを通す。SystemUI のスライダが出る。
@@ -420,10 +420,10 @@ class MainActivity : ComponentActivity() {
         val audio = getSystemService(AudioManager::class.java)
             ?: return super.onKeyDown(keyCode, event)
 
-        audio.adjustStreamVolume(AudioManager.STREAM_MUSIC, direction, 0)
+        audio.adjustStreamVolume(AudioManager.STREAM_ALARM, direction, 0)
         viewModel.showVolume(
-            current = audio.getStreamVolume(AudioManager.STREAM_MUSIC),
-            max = audio.getStreamMaxVolume(AudioManager.STREAM_MUSIC),
+            current = audio.getStreamVolume(AudioManager.STREAM_ALARM),
+            max = audio.getStreamMaxVolume(AudioManager.STREAM_ALARM),
         )
         return true
     }
