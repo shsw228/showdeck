@@ -94,9 +94,18 @@ else
   warn "  確認: adb shell dumpsys account | grep Account"
 fi
 
-step "不要な常駐アプリを止める"
-# launcher3 は ShowDeck が置き換えているので純粋に無駄。停止すると 40MB 戻る。
-run "pm disable-user --user 0 com.android.launcher3"
+# 常駐アプリは止めない。
+#
+# 以前は launcher3 と SystemUI を無効化して MemAvailable を稼いでいたが、
+# どちらも「稼ぎより失うもののほうが大きい」判断ミスだった。
+#
+#   - SystemUI: ジェスチャーの戻る・音量パネル・電源長押しメニューを失う。
+#     この端末に物理の戻るキーは無いので、設定画面に入ったら戻れない
+#   - launcher3: **ShowDeck をホームにしない選択肢が消える。** 戻る先が
+#     無くなるので「ホームアプリとして使う」設定が意味を持たなくなる
+#
+# 実測（何も無効化しない状態）: MemTotal 996MB / MemAvailable 343MB。
+# 単一用途の端末には十分。
 
 # SystemUI は**止めない。**
 #

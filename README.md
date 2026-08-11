@@ -440,16 +440,26 @@ Android 化で Alexa が消えたぶん、キッチンタイマーと目覚ま�
 
 ## メモリ
 
-空きが 30MB しかない端末なので、常駐アプリの削減が効く。
+**常駐アプリは止めない。** 以前は `launcher3` と `SystemUI` を無効化して空きを
+稼いでいたが、どちらも稼ぎより失うもののほうが大きかった。
 
-| | MemAvailable |
+| 実測（MemTotal 996MB）| MemAvailable |
 |---|---|
-| 素の状態 | 238MB |
-| `launcher3` を停止 | **417MB** |
+| 何も無効化しない（**採用**）| 343MB |
+| `SystemUI` を無効化 | 417MB |
 
-`SystemUI` は `system_server` が明示的に起動するため、`pm disable-user` しても常駐は
-続く（PSS は 62MB → 24MB に減る）。完全に消すには user 0 からのアンインストールが
-必要だが、ブートループの危険があり、この端末は復旧が難しいのでやらない。
+差は 74MB。それで失うものは次の通り。
+
+| 止めるもの | 失うもの |
+|---|---|
+| `SystemUI` | ジェスチャーの戻る（`NavigationBar` 内の `EdgeBackGestureHandler`）、音量パネル、電源長押しメニュー。**この端末に物理の戻るキーは無いので、設定画面に入ったら戻れない** |
+| `launcher3` | **ShowDeck をホームにしない選択肢。** 戻る先が消えるので「ホームアプリとして使う」設定が意味を持たなくなる（PSS は 28MB）|
+
+343MB は単一用途の端末には十分で、74MB のためにこれらを買う理由がない。
+
+`SystemUI` を無効化していた端末は `enabled=3`（`DISABLED_USER`）が残る。
+`pm enable` は成功と表示しても戻らないことがあるので `pm default-state` を使い、
+**`package-restrictions.xml` の書き出しは遅延するので 30 秒以上待ってから再起動する。**
 
 ## root（Magisk）について
 
