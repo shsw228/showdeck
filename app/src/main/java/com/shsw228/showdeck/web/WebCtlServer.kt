@@ -2,17 +2,14 @@ package com.shsw228.showdeck.web
 
 import android.util.Log
 import com.shsw228.showdeck.DeckConfig
+import com.shsw228.showdeck.DeckUiState
+import com.shsw228.showdeck.DeckViewModel
 import com.shsw228.showdeck.settings.DeckSettings
-import com.shsw228.showdeck.settings.SettingsStore
 import com.shsw228.showdeck.settings.minutesToTime
 import com.shsw228.showdeck.settings.timeToMinutes
-import com.shsw228.showdeck.system.Backlight
-import com.shsw228.showdeck.alert.AlertCenter
-import com.shsw228.showdeck.system.DeviceSetup
 import com.shsw228.showdeck.system.ApiKey
-import com.shsw228.showdeck.weather.WeatherSnapshot
+import com.shsw228.showdeck.system.Backlight
 import fi.iki.elonen.NanoHTTPD
-import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
 import java.time.LocalTime
 
@@ -23,26 +20,21 @@ import java.time.LocalTime
  * 作業をゼロにするのが目的で、この機能の費用対効果が一番高い。
  * PC やスマホのブラウザから `http://<端末IP>:8080` を開いて設定する。
  *
- * 宅内 LAN からしか触れない前提なので認証は持たない。外に出す場合は要見直し。
+ * 状態は自分で持たず [DeckViewModel] から読む。以前はグローバルの
+ * `AlertCenter` を直接触っていて、状態の持ち主が画面と二重になっていた。
+ *
+ * 認証は Basic 認証。宅内 LAN からしか届かない前提は変えていないが、
+ * このアプリは system UID で動くぶん無認証で置く危険が通常アプリより大きい。
  */
 class WebCtlServer(
-    private val settingsStore: SettingsStore,
-    private val statusProvider: () -> Status,
+    private val viewModel: DeckViewModel,
     port: Int = DeckConfig.WEB_PORT,
 ) : NanoHTTPD(port) {
-
-    data class Status(
-        val mode: String,
-        val ipAddress: String?,
-        val capabilities: DeviceSetup.Capabilities?,
-        val lux: Float?,
-        val weather: WeatherSnapshot?,
-    )
 
     override fun serve(session: IHTTPSession): Response = runCatching {
         // 認証は全経路の手前で行う。パスごとに書くと、後から増やした経路で
         // 付け忘れる。system UID で動いている以上、素通しの経路を作らない。
-        val password = runBlocking { currentSettings() }.webPassword.value
+        val password = state().settings.webPassword.value
         if (!WebAuth.isAuthorized(session.headers["authorization"], password)) {
             return@runCatching unauthorized()
         }
@@ -63,17 +55,14 @@ class WebCtlServer(
         )
     }
 
-    private fun handleIndex(): Response {
-        val settings = runBlocking { currentSettings() }
-        return html(renderIndex(settings, statusProvider()))
-    }
+    private fun handleIndex(): Response = html(renderIndex(state()))
 
     private fun handleSave(session: IHTTPSession): Response {
         // POST 本文は parseBody を呼ばないと params に載らない。
         session.parseBody(HashMap())
         val params = session.parms
 
-        val current = runBlocking { currentSettings() }
+        val current = state().settings
         val updated = current.copy(
             nightStartMinutes = params.timeMinutes("nightStart", current.nightStartMinutes),
             nightEndMinutes = params.timeMinutes("nightEnd", current.nightEndMinutes),
@@ -95,7 +84,7 @@ class WebCtlServer(
             alarmEnabled = params.containsKey("alarmEnabled"),
             alarmMinutes = params.timeMinutes("alarmTime", current.alarmMinutes),
         )
-        runBlocking { settingsStore.update(updated) }
+        runBlocking { viewModel.updateSettings(updated) }
         Log.i(TAG, "設定を更新: $updated")
 
         return redirectHome()
@@ -106,13 +95,13 @@ class WebCtlServer(
         session.parseBody(HashMap())
         val minutes = session.parms.int("minutes", 5).coerceIn(1, 24 * 60)
         val label = session.parms["label"]?.trim().orEmpty()
-        AlertCenter.startTimer(minutes, label)
+        viewModel.startTimer(minutes, label)
         Log.i(TAG, "タイマー開始: $minutes 分 $label")
         return redirectHome()
     }
 
     private fun handleStop(): Response {
-        AlertCenter.dismiss()
+        viewModel.dismissAlert()
         return redirectHome()
     }
 
@@ -146,7 +135,7 @@ class WebCtlServer(
         return newFixedLengthResponse(Response.Status.OK, MIME_PLAINTEXT, logs)
     }
 
-    private suspend fun currentSettings(): DeckSettings = settingsStore.flow.first()
+    private fun state(): DeckUiState = viewModel.uiState.value
 
     private fun html(body: String) =
         newFixedLengthResponse(Response.Status.OK, "text/html; charset=utf-8", body)
@@ -176,15 +165,16 @@ private fun checkMark(value: Boolean) = if (value) "✓" else "✗"
 private fun timeOfDay(at: java.time.LocalDateTime): String =
     "%02d:%02d".format(at.hour, at.minute)
 
-private fun renderIndex(s: DeckSettings, status: WebCtlServer.Status): String {
+private fun renderIndex(state: DeckUiState): String {
+    val s: DeckSettings = state.settings
     val timerStatus = when {
-        AlertCenter.firing != null -> "🔔 ${AlertCenter.firing} が鳴っています"
-        AlertCenter.timerEndsAt != null ->
-            "${AlertCenter.timerLabel} — ${timeOfDay(AlertCenter.timerEndsAt!!)} に鳴ります"
+        state.firing != null -> "🔔 ${state.firing.label} が鳴っています"
+        state.timer != null ->
+            "${state.timer.label} — ${timeOfDay(state.timer.endsAt)} に鳴ります"
         else -> "動作中のタイマーはありません"
     }
 
-    val weatherStatus = status.weather?.let {
+    val weatherStatus = state.weather?.let {
         buildString {
             append(it.placeName.ifBlank { "地名不明" })
             append(" / ")
@@ -200,7 +190,7 @@ private fun renderIndex(s: DeckSettings, status: WebCtlServer.Status): String {
         "API キーが未設定です"
     }
 
-    val caps = status.capabilities
+    val caps = state.capabilities
     val capsRows = if (caps == null) {
         "<tr><td colspan=2>取得中</td></tr>"
     } else {
@@ -257,9 +247,9 @@ private fun renderIndex(s: DeckSettings, status: WebCtlServer.Status): String {
 </head>
 <body><main>
 <h1>ShowDeck</h1>
-<p class="sub">${status.mode} / ${status.ipAddress ?: "IP 不明"}
+<p class="sub">${state.mode} / ${state.ipAddress ?: "IP 不明"}
    / バックライト ${Backlight.read() ?: "?"}/${Backlight.max}
-   / 照度 ${status.lux?.let { "%.0f lux".format(it) } ?: "—"}</p>
+   / 照度 ${state.luxReading?.let { "%.0f lux".format(it) } ?: "—"}</p>
 
 <fieldset>
   <legend>タイマー</legend>

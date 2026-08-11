@@ -1,52 +1,51 @@
 package com.shsw228.showdeck.alert
 
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.setValue
 import java.time.LocalDate
 import java.time.LocalDateTime
 
+/** 発報中のもの。null なら鳴っていない。 */
+data class FiringAlert(val label: String)
+
+/** 動作中のタイマー。 */
+data class RunningTimer(val endsAt: LocalDateTime, val label: String)
+
 /**
- * タイマーとアラームの状態。
+ * タイマーとアラームの発報判定。
  *
  * Android 化で Alexa が消えたぶん、キッチンタイマーと目覚ましは自前で持たないと
  * 端末の存在意義が落ちる。ここが「Alexa の穴を埋める」の中心。
  *
- * Web サーバのスレッドからも UI のコンポジションからも触るので、
- * Compose の状態としてプロセス内に一つだけ置く。ランチャーとして常駐している
- * 以上プロセスは生き続けるため、これで足りる。
+ * 以前は Compose の状態を持つグローバルシングルトンだったが、
+ * 状態の持ち主が画面と二重になり、テストのたびに手で初期化する必要があった。
+ * いまは状態の持ち主を [com.shsw228.showdeck.DeckViewModel] に一本化し、
+ * ここは「時刻を渡すと次の状態を返す」だけの入れ物にしている。
  */
-object AlertCenter {
+class AlertScheduler {
 
-    /** 動作中のタイマーの終了時刻。null なら未設定。 */
-    var timerEndsAt: LocalDateTime? by mutableStateOf(null)
+    var timer: RunningTimer? = null
         private set
 
-    var timerLabel: String by mutableStateOf("")
-        private set
-
-    /** 発報中のラベル。null なら鳴っていない。 */
-    var firing: String? by mutableStateOf(null)
+    var firing: FiringAlert? = null
         private set
 
     /** アラームを 1 日に何度も鳴らさないための記録。 */
     private var alarmFiredOn: LocalDate? = null
 
     fun startTimer(minutes: Int, label: String, now: LocalDateTime = LocalDateTime.now()) {
-        timerEndsAt = now.plusMinutes(minutes.toLong())
-        timerLabel = label.ifBlank { "タイマー" }
+        timer = RunningTimer(
+            endsAt = now.plusMinutes(minutes.toLong()),
+            label = label.ifBlank { DEFAULT_TIMER_LABEL },
+        )
     }
 
     fun cancelTimer() {
-        timerEndsAt = null
-        timerLabel = ""
+        timer = null
     }
 
     /** 発報を止める。タイマーは鳴り終わったら消える。 */
     fun dismiss() {
         firing = null
-        timerEndsAt = null
-        timerLabel = ""
+        timer = null
     }
 
     /**
@@ -60,10 +59,10 @@ object AlertCenter {
     fun tick(now: LocalDateTime, alarmEnabled: Boolean, alarmMinutesOfDay: Int): Boolean {
         if (firing != null) return false
 
-        timerEndsAt?.let { endsAt ->
-            if (!now.isBefore(endsAt)) {
-                firing = timerLabel.ifBlank { "タイマー" }
-                timerEndsAt = null
+        timer?.let { running ->
+            if (!now.isBefore(running.endsAt)) {
+                firing = FiringAlert(running.label)
+                timer = null
                 return true
             }
         }
@@ -74,7 +73,7 @@ object AlertCenter {
             // 分単位で一致を見る。秒まで見ると 1 秒の取りこぼしで鳴らない日が出る。
             if (alarmFiredOn != today && minuteOfDay == alarmMinutesOfDay) {
                 alarmFiredOn = today
-                firing = "アラーム"
+                firing = FiringAlert(ALARM_LABEL)
                 return true
             }
         }
@@ -82,11 +81,8 @@ object AlertCenter {
         return false
     }
 
-    /** テスト用。プロセス内シングルトンなのでテスト間で状態が漏れる。 */
-    internal fun resetForTest() {
-        timerEndsAt = null
-        timerLabel = ""
-        firing = null
-        alarmFiredOn = null
+    private companion object {
+        const val DEFAULT_TIMER_LABEL = "タイマー"
+        const val ALARM_LABEL = "アラーム"
     }
 }

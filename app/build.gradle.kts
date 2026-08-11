@@ -101,6 +101,8 @@ dependencies {
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.activity.compose)
     implementation(libs.androidx.lifecycle.runtime.compose)
+    // 状態は ViewModel が持つ。Hilt は入れていない（README の「依存の注入」参照）。
+    implementation(libs.androidx.lifecycle.viewmodel.compose)
 
     implementation(platform(libs.androidx.compose.bom))
     implementation(libs.androidx.compose.ui)
@@ -120,6 +122,8 @@ dependencies {
     testImplementation(libs.junit)
 
     // Android の org.json はユニットテストではスタブで、呼ぶと例外になる。
-    // 実装をテストの classpath に載せて、気象庁 JSON の解析を実機なしで確かめる。
+    // 実装をテストの classpath に載せて、天気 JSON の解析を実機なしで確かめる。
     testImplementation(libs.json)
+
+    testImplementation(libs.kotlinx.coroutines.test)
 }
