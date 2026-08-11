@@ -2,148 +2,99 @@
 
 [![build](https://github.com/shsw228/showdeck/actions/workflows/build.yml/badge.svg)](https://github.com/shsw228/showdeck/actions/workflows/build.yml)
 
-Android 化した Amazon Echo Show 5 第2世代（コードネーム `cronos`）を、常駐ダッシュボードに変えるためのアプリ。
-
-大きな時計が主役。天気・予定・タイマー・ポモドーロを 1 画面ずつ持つ。
+Android 化した Amazon Echo Show 5（第 2 世代 / `cronos`）を、常駐ダッシュボードに変える Android アプリ。
 
 ![Home](docs/screens/home.png)
 
+## できること
+
+- **時計** — 分は 1 桁ずつ転がし、秒は等幅の数字で添える
+- **天気** — OpenWeatherMap の現況と 5 日予報。地点は座標指定か現在地から
+- **カレンダー** — ICS（`webcal`）の購読。複数 URL、繰り返しと除外日に対応
+- **ポモドーロ** — 長さのプリセット、自動継続、今日の合計
+- **タイマー** — 同時に 8 本まで。音と読み上げで発報し、無音（画面だけ）も選べる
+- **明るさ** — 昼夜で切り替え、照度センサーで消灯と復帰
+- **Web 設定画面と JSON API** — 端末内で HTTP を待ち受け、mDNS で名乗る
+
 ## 画面
 
-すべて実機（960×480）の画面をそのまま撮ったもの。夜の配色。
-
 | | |
 |---|---|
-| **Weather**<br>現在の気温、3 時間刻みの推移、5 日間の予報 | **Calendar**<br>週ストリップ、予定一覧、選んだ予定から集中を始められる |
+| **Weather**<br>現況、3 時間刻みの推移、5 日予報 | **Calendar**<br>週ストリップ、予定一覧、選んだ予定から集中を始められる |
 | ![Weather](docs/screens/weather.png) | ![Calendar](docs/screens/calendar.png) |
-| **Focus**<br>ポモドーロ。リング、セッションの進み、長さのプリセット | **Timers**<br>カウントダウンとクイック追加 |
+| **Focus**<br>ポモドーロ | **Timers**<br>カウントダウンとクイック追加 |
 | ![Focus](docs/screens/focus.png) | ![Timers](docs/screens/timers.png) |
-| **Settings**<br>押して即座に効く設定、権限の状態、Android の設定への入口 | **Web**<br>同じ設定を LAN のブラウザから。`http://<端末>:8080` |
-| ![Settings](docs/screens/settings.png) | 長い文字列（ICS の URL、API キー）は 5.5 インチで打てない |
+| **Settings**<br>設定、権限の状態、Android の設定への入口 | **Web**<br>同じ設定をブラウザから |
+| ![Settings](docs/screens/settings.png) | 長い文字列（ICS の URL、API キー）は 5.5 インチでは打てない |
 
-## 設計の前提
+ナビは 3 通り（左レール / 下ドック / タイルのみ）、Home の並べ方も 3 通り選べる。
 
-| 項目 | 内容 |
+## 動作環境
+
+| | |
 |---|---|
 | 端末 | Echo Show 5 2nd gen (2021) / `cronos` |
-| 画面 | 960×480、密度 195（≒ 788×394 dp）、5.5 インチ |
 | OS | LineageOS 18.1 / Android 11 (API 30) `userdebug` `test-keys` |
-| SoC / ABI | MediaTek MT8163 / **armeabi-v7a**（ROM が 32bit） |
-| RAM | 973MiB。`MemAvailable` は実測 325MB 前後、zram 483MB のうち 62MB 使用 |
-| CPU | 4 コア。**アイドル時は CPU0 だけオンライン**（`/sys/devices/system/cpu/online` = `0`）|
-| バックライト | `/sys/class/leds/lcd-backlight/brightness`（0..255、system:system）|
-| SELinux | **Permissive** |
-| 電源 | 常時給電 |
-| 用途 | 単一用途・据え置き・**触らない時間が大半** |
+| 画面 | 960×480、密度 195（≒ 788×394 dp）|
+| ABI | `armeabi-v7a`（ROM が 32bit）|
+| minSdk / targetSdk / compileSdk | 28 / 28 / 37 |
 
-すべて `./scripts/check-device.sh` による実測値。
-
-「非力・横長・遠目・触らない」。この 4 つから設計判断がほぼ決まる。
-
-- **触らない** → 設定は端末でも触れるが（Settings タブ）、長い文字列は Web 設定画面で入れる
-- **遠目** → 情報を詰め込まない。5.5 インチで読めるのは 3〜4 項目まで
-- **非力** → WebView を使わない、毎秒の再コンポーズを避ける、常時動くアニメーションは CPU を測る
-- **常時点灯** → 暗い部屋で眩しくないことが機能要件
-
-### プラットフォーム署名で system UID を取る
-
-この ROM は `ro.build.tags = test-keys`、つまり **AOSP が公開しているテスト鍵**で署名されている。照合済み:
-
-```
-端末 /system/framework/framework-res.apk : c8a2e9bc…51192ab8
-AOSP platform.x509.pem                   : c8a2e9bc…51192ab8
-```
-
-同じ鍵でアプリを署名し `android:sharedUserId="android.uid.system"` を付けることで、**Magisk も TWRP も使わずに** system UID として動作する。実機で確認済み:
-
-| | |
-|---|---|
-| `isSystemUid` | ✓ |
-| `WRITE_SECURE_SETTINGS` | ✓（signature で自動付与、`pm grant` 不要）|
-| `WRITE_SETTINGS` | ✓ |
-| バックライト直書き | ✓（root 不要）|
-| `root (su)` | ✗（**不要になった**）|
-
-root が要る作業は、いまのところ Device Owner の解除だけ。それも `adb root` で足りる（`userdebug` ビルドのため）。
-
-### ストア配布しない前提で取っている選択
-
-- `targetSdk = 28`。Scoped Storage、フォアグラウンドサービスの type 必須化、ランタイム権限の再確認といった Android 10 以降の制約を丸ごと回避する。従う利点が一つもない
-- Device Owner としてステータスバー無効化とホームアプリ固定を行う
-- `abiFilters = armeabi-v7a`、R8、ロケール絞りで release APK を 2.2MB に抑える
-
-### 輝度制御の実測
-
-暗室で眩しくないことが機能要件なので、どこまで落とせるかを実機で測った。
-
-| 方法 | 到達できる raw | 判定 |
-|---|---|---|
-| ウィンドウ輝度 `screenBrightness = 0.01` | 255 のまま（**無視される**）| 使えない |
-| `Settings.System.SCREEN_BRIGHTNESS = 1` | 10（OS の下限で頭打ち）| 不十分 |
-| **sysfs 直書き** | **1** | 採用 |
-
-sysfs 直書きは、何も起きなければ保持されるが、画面まわりのイベントで DisplayPowerController に 255 を書き戻される。そのため 15 秒ごとに読んで、違っていたら押し戻している。あわせて目標値が変わった瞬間にも書く（押し戻しの周期だけに任せると、操作パネルで明るさを変えても最大 15 秒効かない）。
+**ROM が AOSP の公開テスト鍵で署名されていることが前提。** 同じ鍵で APK を署名し
+`sharedUserId=android.uid.system` を宣言することで、root なしで system UID を得ている。
+バックライトの直接制御と signature 権限はこれが土台。
 
 ## セットアップ
 
-### 1. Mac 側
-
-このリポジトリは Android 開発環境を前提にしている。
+### 1. 開発環境
 
 ```sh
-brew install openjdk@17                      # cask の temurin は sudo を要求するので formula を使う
-brew install --cask android-platform-tools   # adb
-brew install --cask android-commandlinetools # sdkmanager
-brew install --cask android-studio
+brew install openjdk@17
+brew install --cask android-platform-tools android-commandlinetools
 
 export JAVA_HOME=/opt/homebrew/opt/openjdk@17
 export ANDROID_HOME="$HOME/Library/Android/sdk"
 sdkmanager --sdk_root="$ANDROID_HOME" "platform-tools" "platforms;android-37.1" "build-tools;37.0.0"
 ```
 
-`local.properties` に `sdk.dir` を書けば `./gradlew` が通る。Gradle は Wrapper（9.7.0）で固定しているので、システムの Gradle バージョンは問わない。
+`local.properties` に `sdk.dir` を書く。Gradle は Wrapper で固定してある。
 
-#### ツールチェーンの固定について
-
-- **AGP 9.3.1 / Gradle 9.7.0**。AGP 8.x は Gradle 9.6 以降が弾き、最新の androidx（core-ktx 1.19 / lifecycle 2.11）も AGP 9.1 以上を要求するため 9 系に乗せている
-- AGP 9 は Kotlin を内蔵しているので `org.jetbrains.kotlin.android` プラグインは適用しない
-- `compileSdk = 37` / `targetSdk = 28`。この差は意図的
-
-### 2. 端末の素性を確認
+### 2. 端末の確認
 
 ```sh
-./scripts/check-device.sh
+./scripts/check-device.sh   # 何も変更しない
 ```
 
-SoC・RAM・画面密度・ABI・`su` の有無・バックライトの sysfs パスが出る。
-`DeckConfig` と `Backlight.NODE` はこの出力を見て詰める。何も変更しないので、いつ実行しても安全。
+SoC・RAM・画面密度・ABI・バックライトの sysfs パスが出る。
 
-### 3. プラットフォーム署名鍵を用意
+### 3. 署名鍵
 
 ```sh
 ./scripts/fetch-platform-keys.sh
 ```
 
-AOSP から公開テスト鍵を取得し、フィンガープリントを端末の署名と照合したうえで `keys/platform.p12` を作る。鍵はリポジトリに含めていない（秘密ではないが、出所を明示するため都度取得する）。
+AOSP の公開テスト鍵を取得し、端末の署名とフィンガープリントを照合して
+`keys/platform.p12` を作る。鍵はリポジトリに含めていない。
 
-**これを実行しないとビルドした APK はインストールできない。** `sharedUserId=android.uid.system` の署名検証で弾かれる。
+**これを実行しないとビルドした APK はインストールできない。**
 
-### 4. インストールとブートストラップ
+### 4. インストール
 
 ```sh
 ./gradlew installRelease
 ./scripts/setup-device.sh
 ```
 
-プラットフォーム署名が効いていれば、権限はすべて署名だけで通る。**adb で残るのは Device Owner 化 1 行だけ**で、これも仕様上アプリからは実行できない。
+### 5. Device Owner（任意）
 
 ```sh
 adb shell dpm set-device-owner com.shsw228.showdeck/.admin.AdminReceiver
 ```
 
-常時点灯・スリープ無効・没入モード確認の抑止は `DeviceSetup.apply()` が毎起動で適用し直す。OTA や設定リセットで飛んでも自動復帰する。
+ホームアプリの固定に使う。付けなくてもアプリは動く。端末にアカウントが
+1 つでも登録されていると失敗する。
 
-Device Owner 化は端末にアカウントが 1 つでも登録されていると失敗する。失敗してもアプリは動く（ステータスバー無効化とホーム固定が効かなくなるだけ）。
+**Device Owner が付いているとアンインストールできない。**
+外す手順は [docs/design.md](docs/design.md) にある。
 
 ### 戻す
 
@@ -151,441 +102,82 @@ Device Owner 化は端末にアカウントが 1 つでも登録されている�
 ./scripts/revert-device.sh
 ```
 
-**Device Owner が付いているとアンインストールできない**（`DELETE_FAILED_INTERNAL_ERROR`）。`dpm remove-active-admin` も `Attempt to remove non-test admin` で失敗する。実機で通った唯一の手順:
-
-```sh
-adb root
-adb shell rm -f /data/system/device_owner_2.xml /data/system/device_policies.xml
-adb reboot
-adb wait-for-device && adb uninstall com.shsw228.showdeck
-```
-
-`cronos` は BROM USBDL が塞がれていて、詰むと復旧できない。ソフト側の変更は必ず往復できる状態を保つこと。
-
-## 操作
+## 使い方
 
 | 操作 | 動作 |
 |---|---|
-| ナビ | Home / Weather / Calendar / Focus / Timers を切り替える |
-| タイルをタップ | そのタイルの画面へ移動する |
-| タップ | 消灯中なら一時的に画面を戻す / 発報中なら止める |
-| 音量キー | アラームの音量。自前のインジケータを出すか、`SystemUI` の音量パネルに任せるかを選べる |
+| ナビ | Home / Weather / Calendar / Focus / Timers / Settings を切り替える |
+| タイルをタップ | その画面へ移動する |
+| 画面をタップ | 消灯中なら一時的に戻す / 発報中なら止める |
+| 音量キー | アラームの音量。自前のインジケータか `SystemUI` の音量パネルを選べる |
 
-## 画面の組み立て
+既定のホームアプリにするかは Settings タブの `Home app` から。Android の選択
+ダイアログはインストール時ではなく HOME キーを押したときに出るので、設定から
+開けるようにしてある。
 
-`Echo Dashboard.dc.html`（claude.ai/design のプロジェクト）を元にしている。
-デザインから取ったのは**構造と階層**で、寸法は写していない（[寸法の基準](#寸法の基準)）。
+## 設定
 
-ナビは 3 通り（左レール / 下ドック / タイルのみ）、Home の並べ方も 3 通り
-（一日の流れ / 均等割り / 集中を主役に）。どれが良いかは実際に部屋に置いて
-数日使わないと分からないので、Web 設定画面から切り替えられるようにしてある。
-
-**面は 2 種類しかない。** 明るいタイルと濃色パネル。濃色はその画面の主役 1 つだけに
-使う。2 枚並べるとどちらを見ればいいか分からなくなる。
-
-## 寸法の基準
-
-**Android Auto のデザイン指針をそのまま持ってきている。** あちらが想定するのは
-「運転中に一瞥して押す」状況で、この端末の「部屋の向こうから見て指で押す」と要求が
-ほぼ同じ。画面サイズ（960×480）も車載ヘッドユニットに近い。
-
-以前は全部を「画面高の何%」で決めていた。密度が読めない段階では妥当だったが、
-実測（密度 195 / 788×394dp）が出た以上は絶対値で押さえたほうが破綻しない。
-実際、相対指定のままだと**タッチ領域が 53dp、本文が 20sp** と基準を割っていた。
-
-### デザインから何を取るか
-
-`Echo Dashboard.dc.html` は **960×480 の画素**で描かれている。この端末の dp
-キャンバスは 788×394（密度 195）なので、あちらの数値をそのまま dp にすると
-1.22 倍に膨らんで収まらないし、13px や 9px といった半端な値が並ぶことになる。
-
-**取るのは構造と階層だけ。** 値は 4dp グリッドに載せ直す。
-
-| デザイン | 実装 |
-|---|---|
-| 数字が 78 / 62 / 60 / 56 / 46 / 42 / 38 の 7 段 | 役割で 3 段（`Display` / `Numeral` / リング中央）|
-| 間隔が 9 / 11 / 13 / 14 / 18 混在 | `Space1..6` の 4dp スケール。タイル間は 1 種類 |
-| 角丸 26 / 16 / 10 / 999 | 面は 1 種類。押せるものは全部 錠剤 |
-
-並べて見比べても区別がつかない段は、タイルごとに手で詰めた結果であって
-階層ではない。段を増やしたくなったら、まず「既存のどれとも違って見えるか」を
-確かめる。
-
-リングは大きさ・線の太さ・中央の文字を `RingSpec` が組で持つ。別々に渡させると
-どこかで組み合わせがずれる。
-
-### 収まり方を自分で計算しない
-
-以前ここで三度間違えた。時計を `weight(1.7f)` の箱に入れたせいで箱幅と文字幅の
-差分が生まれ、それを「係数の決め打ち」→「実機スクリーンショットの実測」→
-「`TextMeasurer` で測る」と順に埋めようとした。正解は**箱を作らないこと**だった。
-
-**数値を合わせる作業が始まったら、まず構造を疑う。**
-
-同じ話が今回も出た。Home の天気タイルが縦に溢れたとき、文字を小さくするのでは
-なく「タイルが浅いときは推移と最高最低を出さない」に変えた。**入る情報量は
-タイルの高さで決まる**もので、どの並べ方でも同じ中身を出そうとするのが間違い。
-
-出典: [Sizing](https://developers.google.com/cars/design/android-auto/design-system/sizing) /
-[Typography](https://developers.google.com/cars/design/android-auto/design-system/typography)
-
-## 端末で直接いじれるもの
-
-Settings タブ。**押して即座に効くもの**を置く。
-
-| 置いているもの |
-|---|
-| ナビの出し方、Home の並べ方、24 時間表記、秒 |
-| 明るさ（いま効いている側だけを動かす）|
-| ポモドーロの各区間の長さ、周期、自動開始 |
-| 夜間・消灯の時間帯、アラーム |
-| 現在地から天気の地点を合わせる |
-| Android の設定を開く |
-
-**文字を打つものは置かない**（ICS の URL、API キー、地名）。5.5 インチで文字入力を
-させないのが Web 設定画面の存在意義。
-
-押せるものは指で触る前提なので 44dp 以上にしている。
-
-### Android の設定へ
-
-この端末はランチャーを置き換えていて、ステータスバーも通知シェードも止めている。
-**Settings タブの `Android settings` が唯一の入口。**
-
-戻る手段が無いまま放置されると翌朝までダッシュボードが出ないので、前面を離れて
-3 分で `AlarmManager` が HOME インテントを起こす（`HomeWatchdog`）。他アプリ内での
-操作は検出できないので固定タイムアウト。
-
-**`SystemUI` は止めない。** 止めれば PSS 25MB ぶん空くが、標準設定のナビゲーション
-バーと電源長押しメニューを失う。この端末に物理の戻るキーは無く、設定画面に入ったら
-戻れなくなる。25MB のために買う損ではない。
-
-## ポモドーロ
-
-Focus 画面。一般的なポモドーロアプリが備えている操作を揃えた。
-
-| 操作 | 置き場所 |
-|---|---|
-| 開始 / 一時停止 / 再開 / スキップ / リセット | Focus 画面 |
-| 長さのプリセット（標準 25 / 長め 45 / 短め 15）| Focus 画面 |
-| 予定を選んでその名前で始める | Calendar 画面 |
-| 各区間の長さ、長い休憩までの回数 | Web 設定画面 |
-| 1 日の目標回数 | Web 設定画面 |
-| 休憩・作業の自動開始 | Web 設定画面 |
-
-既定は 25 分作業 / 5 分休憩、4 回ごとに 15 分の長い休憩、1 日 8 回。
-
-- 区間が終わるたびに鳴り、次の区間へ進む
-- **既定では休憩だけ自動で始まり、作業は自分で始める。** 作業まで自動だと、
-  席を外している間に 1 回分が流れる
-- 発報を止めてもポモドーロは止まらない。切り替わりのたびに止まっては用を成さない
-- ラベルは「次に何をするか」。「作業終了」より「休憩」のほうが次の行動が分かる
-- 進捗はリングで出す。数字だけだと「あとどれくらいか」を読む必要がある
-- 今日の達成数は丸を並べる。「3/8」より埋まっていく丸のほうが残りが直感で分かる
-- 作業をスキップしても 1 回こなしたと数える。早く終わった作業を 25 分待つ意味はない
-
-## カレンダー
-
-ICS を購読する。URL は Web 設定画面に 1 行 1 本で書く。仕事と私用で分かれて
-いるのが普通で、片方しか出ないと結局スマホを見ることになる。
-
-15 分ごとに取りに行き、**失敗したらキャッシュを読む**。通信が死んでも画面は出す。
-
-解析は自前（`IcsParser`）。完全な RFC 5545 実装は目指さず、この端末に出す
-「今日と近い数日」だけを展開する。
-
-| 対応 | 内容 |
-|---|---|
-| ○ | 折り返しのほどき、`SUMMARY` / `LOCATION` のエスケープ |
-| ○ | `DTSTART` の 4 形式（`VALUE=DATE` の終日、`TZID=` 付き、末尾 `Z` の UTC、無印）|
-| ○ | `RRULE` の `FREQ=DAILY` / `WEEKLY`（`INTERVAL` `BYDAY` `COUNT` `UNTIL`）|
-| ○ | `EXDATE`、`DURATION` |
-| × | `FREQ=MONTHLY` / `YEARLY`（初回だけ出す）|
-| × | `RECURRENCE-ID` による個別回の上書き |
-
-月次を落としているのは、個人の予定表では毎週の会議が大半で、月次はあっても
-「第 2 火曜」のような `BYSETPOS` を伴うことが多いため。中途半端に対応すると
-**間違った日に出る**。出さないほうがまだ実害が小さい。
-
-予定の色は UID から決める。ICS は色を持たないが、時刻や並び順から決めると
-予定が 1 つ増えただけで全部の色が入れ替わり、色で見分けるという用途が壊れる。
-
-### ごみの収集日について
-
-以前あった機能だが、この UI では落とした。今のデザインに置き場所が無く、
-無理に押し込むより、必要になったときに改めて場所ごと設計するほうがよい。
-実装は履歴に残っている（`garbage/Garbage.kt`）。
-
-## Web 設定画面
-
-腰を据えて設定するときはこちら。**`http://<端末IP>:8080` を PC やスマホのブラウザで開く。**
-タイマーとポモドーロの開始、夜間モードの時間帯、バックライトの値、消灯の設定、
-天気の地点と API キー、アラーム時刻、logcat の閲覧ができる。
-
-**認証は無い。** 以前は Basic 認証を要求していたが、生成したパスワードを
-5.5 インチの画面から読み取って打ち直す手間が、宅内 LAN で得られる安全に
-釣り合わなかった。**宅内 LAN の外には出さないこと**が前提。
-
-このアプリは system UID で動くので、無認証で置く危険は通常アプリより大きい。
-LAN に信用できない機器がいる環境では、そもそも置かないほうがよい。
-
-### mDNS と CLI
-
-IP を覚えなくても引けるように DNS-SD で名乗る（`_http._tcp.`、名前は `ShowDeck`）。
-
-**`NsdManager` が広告できるのはサービス名だけで、ホスト名は選べない。**
-名前解決の結果は端末が持つホスト名（この端末では `Android-2.local`）になる。
-`ShowDeck.local` では引けない。
-
-`scripts/showdeck` がその解決を代わりにやる。
+端末の **Settings タブ**で大半は変えられる。長い文字列は Web から。
 
 ```
-$ ./scripts/showdeck host
-http://Android-2.local:8080
-
-$ ./scripts/showdeck state              # いまの状態を JSON で
-$ ./scripts/showdeck pomodoro start     # start|pause|skip|stop
-$ ./scripts/showdeck timer 3 tea        # 3 分のタイマーを "tea" で
-$ ./scripts/showdeck timer-toggle 1234  # 一時停止と再開
-$ ./scripts/showdeck timer-reset 1234   # 頭に戻す
-$ ./scripts/showdeck timer-remove 1234  # 一覧から消す
-$ ./scripts/showdeck stop               # 鳴っている発報を止める
+http://<端末の IP>:8080
 ```
 
-状態を変える操作は POST だけで受ける。GET で副作用が起きると、ブラウザの
-先読みやクローラで勝手に発火する。
+- 天気の座標と地点名、OpenWeatherMap の API キー
+- ICS の URL（改行区切りで複数）
+- 夜間モードの時間帯、バックライトの値、消灯の設定
+- ポモドーロの長さ、アラーム時刻
+- `logcat` の閲覧
 
-**設定の POST（`/save`）に一部だけ送るときは注意。** ブラウザのフォームは
-未チェックの項目を送らないので「無い＝OFF」で読む必要がある。手で送るときは
-フォームだけが付ける隠しフィールドが無いぶん、**書かなかった項目は現状維持**に
-なるようにしてある（そうしないと 1 項目送っただけで他のトグルが全部落ちる）。
+**認証は無い。宅内 LAN の外に出さないこと。** このアプリは system UID で動くので、
+無認証で置く危険は通常のアプリより大きい。
 
-## 秒の表示
+API キーは Android Keystore の鍵で暗号化して端末内に置く。リポジトリにも APK にも
+入っていない。ログにも伏せ字しか出ない。
 
-時計の右下に数字で添える（Web 設定画面で消せる）。
+## CLI と API
 
-以前は画面の下端を横切る線で 1 分の進みを表していた。時計が画面の主役
-だった頃の構成で、今は時計がヘッダの隅にいるので線を引く場所がない。
+DNS-SD で名乗るので IP を覚えなくても引ける（`_http._tcp.` / 名前は `ShowDeck`）。
+`NsdManager` が広告できるのはサービス名だけなので、名前解決の結果は端末側の
+ホスト名になる。`scripts/showdeck` がその解決を代わりにやる。
 
-**常時動くアニメーションを足すときは CPU を測ること。** その線を連続して
-動かしたときの実測が下記で、アイドル時 1 コアしか動かないこの端末では
-更新頻度がそのまま効く。
-
-| 更新頻度 | CPU（定常）| 1 回の移動量 |
-|---|---|---|
-| 60fps | **39%** | 0.22dp |
-| 20fps | 15% | 0.66dp |
-| 10fps | 7% | 1.3dp |
-| 停止 | 0% | — |
-
-いまの秒表示は毎秒 1 回、ヘッダの 2 文字を差し替えるだけなので桁が違う。
-
-## 時刻のアニメーション
-
-数字が下から現れて上へ抜ける。桁ごとに独立して動かすのが要点で、
-文字列まるごとを差し替えると変わっていない桁まで一緒に動く。
-
-向きは上方向に固定している。時刻は前へ進むものなので、桁上がり
-（59 → 00）で下向きに戻すとそこだけ時間が巻き戻って見える。
-区切りの「:」は動かさない。動かすと時計全体が波打つ。
-
-表示は `HH:mm` なので動くのは毎分 1 回だけ。秒の線と違って費用はほぼない。
-
-## 3 つの表示モード
-
-| モード | バックライト | 表示 |
-|---|---|---|
-| `DAY` | 設定値（既定 180）| 明るい配色 |
-| `NIGHT` | 設定値（既定 1）| 暗い配色（`DeckPalette.Night`）|
-| `BLACKOUT` | 0 | 消灯 |
-
-消灯は画面を切っているのではなく**バックライトを 0 にしているだけ**で、Android 側は
-`Awake` のまま。そのためタッチが即座に届き、復帰にラグが無い。`goToSleep` を使うと
-touchscreen ごと止まってタッチで戻せなくなる。
-
-復帰のトリガはタップと、部屋の明かりの**立ち上がり**。閾値を超えているかで判定すると
-明るい間じゅう復帰し続けて消灯に入れない（実機で 15 秒周期の往復を観測した）。
-
-## 天気
-
-**OpenWeatherMap** を使う。当初は気象庁の予報 JSON を使っていたが、乗り換えた。
-
-理由は**実況が取れない**こと。気象庁の予報 JSON は発表時刻を過ぎた当日の枠が実況値で
-埋まり、最高と最低が同じ数字（実機で 29°/29°）になる。回避策として明日の予報を出して
-みたが、時計に明日の気温を出しても意味がない。**時計に載せて一番役に立つのは今の気温**で、
-それが取れないのは致命的だった。
-
-無料枠で叩ける 2 つを使う。
-
-```
-/data/2.5/weather   現在の気温と天気
-/data/2.5/forecast  3 時間ごと 5 日分
+```sh
+./scripts/showdeck host                 # http://Android-2.local:8080
+./scripts/showdeck state                # いまの状態を JSON で
+./scripts/showdeck pomodoro start       # start | pause | skip | stop
+./scripts/showdeck timer 3 tea          # 3 分のタイマーを "tea" で
+./scripts/showdeck timer-toggle <id>    # 一時停止と再開
+./scripts/showdeck timer-reset <id>     # 頭に戻す
+./scripts/showdeck timer-remove <id>    # 一覧から消す
+./scripts/showdeck stop                 # 鳴っている発報を止める
 ```
 
-### 表示
+状態を変える操作は POST だけで受ける。
 
-| 位置 | 内容 |
+## 開発
+
+```sh
+./gradlew testDebugUnitTest                 # ユニットテスト
+./gradlew lintRelease                       # lint
+./gradlew assembleRelease                   # R8 を通した APK
+./gradlew :app:updateDebugScreenshotTest    # UI を変えたら参照画像を撮り直す
+./gradlew :app:validateDebugScreenshotTest  # 参照画像と比べる
+```
+
+GitHub Actions が push と PR で `testDebugUnitTest lintDebug assembleDebug` を回す。
+ドキュメントだけの変更では走らない。CI は署名鍵を持たないので release は回さない。
+
+## 同梱物
+
+| | |
 |---|---|
-| 主 | 現在気温 |
-| 副 | `↑最高 ↓最低`（これから 24 時間） |
-| 脚注 | 地名・天気の文言・降水確率 |
+| [Manrope](https://github.com/sharanda/manrope) | SIL Open Font License 1.1 — [notice](third_party/fonts/OFL-Manrope.txt) |
+| [JetBrains Mono](https://github.com/JetBrains/JetBrainsMono) | SIL Open Font License 1.1 — [notice](third_party/fonts/OFL-JetBrainsMono.txt) |
 
-最高／最低を「今日」ではなく**これから 24 時間**にしているのは、当日で切ると日が暮れる
-ほど残りの区間が減って最高と最低が潰れるため。矢印だけ添えて日付の説明を省いている。
+このリポジトリ自体のライセンスは未設定（既定では著作権者に全権が留保される）。
 
-**天気をタップすると 5 日間の予報**が全画面で出る。横 5 列に並べるのは、960×480 の
-横長画面では縦にリストを積むより一目で比べられるから。列数は 5 に固定している
-（日によって 5 列と 6 列が入れ替わると、1 列の幅も文字の大きさも変わって見え方が安定しない）。
+## 詳しい話
 
-### 実装上の落とし穴
-
-- **応答の `dt_txt` は UTC。** そのまま日付として使うと JST の 15 時が「06:00」として
-  前日に寄る。必ず `dt`（epoch）から現地時刻へ直す
-- **末尾の日は区間が足りない。** 半日ぶんしか無い日は最高気温も降水確率も過小に出る
-  （実機で最終日が降水 0% になった）。18 時間ぶんに満たない日は使わない
-- 日ごとのアイコンは**その日の 12 時に一番近い区間**のもの。最も荒れた天気を選ぶと
-  一瞬の通り雨で一日が雨になり、平均すると特徴が消える
-
-アイコンは画像を持たず Canvas で描く。ビットマップだと夜間の赤単色パレットに追従できず、
-そこだけ白く浮くため。線画ではなく塗りにしているのは、円を重ねた線画の雲が実機で
-団子にしか見えなかったから。夜は太陽ではなく月にする。
-
-通信が死んだらディスクのキャッシュを読み、それも無ければ天気欄ごと畳む。
-**時計だけは必ず出す。**
-
-### API キーの持ち方
-
-**リポジトリにも APK にも入れない。** Web 設定画面から入力し、端末内で
-Android Keystore の鍵により AES-GCM で暗号化して DataStore に置く。
-
-- 鍵は Keystore の中で生成され、外に出ない
-- `DeckSettings` はまるごとログに出しているため、キーは `ApiKey` 型で包んで
-  `toString()` を `****` に潰してある。Web の `/logs` から平文が読めては意味がない
-- Web 設定画面には伏せ字しか出さない。空のまま保存すれば現在のキーを維持する
-
-平文のキーは通信時にどのみち復号するので、root を取れる相手からは守れない。
-ここで防いでいるのは「ディスクに平文で転がること」と「うっかりログや git に載ること」。
-
-## タイマー・アラーム
-
-Android 化で Alexa が消えたぶん、キッチンタイマーと目覚ましは自前で持つ。
-
-- タイマーは Web 設定画面から「分」を入れて開始する
-- アラームは毎日 1 回。同じ日に二度は鳴らない
-- 発報すると全画面表示になり、端末の既定アラーム音と TTS の読み上げが出る
-- **消灯中に発報しても画面を点ける。** 真っ暗なまま音だけが鳴るのを防ぐ
-- 発報中の配色は昼夜のパレットに従わない。夜中のアラームを暗い赤で出したら用をなさない
-
-## メモリ
-
-**常駐アプリは止めない。** 以前は `launcher3` と `SystemUI` を無効化して空きを
-稼いでいたが、どちらも稼ぎより失うもののほうが大きかった。
-
-| 実測（MemTotal 996MB）| MemAvailable |
-|---|---|
-| 何も無効化しない（**採用**）| 343MB |
-| `SystemUI` を無効化 | 417MB |
-
-差は 74MB。それで失うものは次の通り。
-
-| 止めるもの | 失うもの |
-|---|---|
-| `SystemUI` | ジェスチャーの戻る（`NavigationBar` 内の `EdgeBackGestureHandler`）、音量パネル、電源長押しメニュー。**この端末に物理の戻るキーは無いので、設定画面に入ったら戻れない** |
-| `launcher3` | **ShowDeck をホームにしない選択肢。** 消すと戻る先が無くなり、既定ホームを選び直せなくなる（PSS は 28MB）|
-
-343MB は単一用途の端末には十分で、74MB のためにこれらを買う理由がない。
-
-`SystemUI` を無効化していた端末は `enabled=3`（`DISABLED_USER`）が残る。
-`pm enable` は成功と表示しても戻らないことがあるので `pm default-state` を使い、
-**`package-restrictions.xml` の書き出しは遅延するので 30 秒以上待ってから再起動する。**
-
-## CPU
-
-`/proc/<pid>/stat` の `utime + stime` を 60 秒の窓で差分して測った
-（`adb shell top` はパイプ越しに何も返さない）。無操作の定常値。
-
-| 状態 | 1 コア換算 |
-|---|---|
-| 秒を出さない | 3.4% |
-| 秒を出す（**既定**）| 14.3% |
-
-**コア数で割ってはいけない。** この端末はアイドル時に CPU0 だけを残して
-残り 3 コアを落とすので、14.3% は「動いている 1 コアの 14%」に近い。
-
-**秒表示が定常負荷の 4 分の 3 を占める。** 1 桁ずつ数字を動かすので毎秒
-再コンポーズと遷移アニメーションが走る。常時給電の据え置き機なら払える額だが、
-気になるなら設定の `Show seconds` を切ると 3.4% まで落ちる。
-
-## root（Magisk）について
-
-**現時点では不要。** プラットフォーム署名で system UID が取れているため、当初 root が必要だと見ていた「OS 下限を超えた減光」は root なしで実現できている。
-
-残る root 用途は `/system/priv-app` へ置いての `persistent` 化だけで、これは `adb root` + `remount` でも足りる可能性が高い。Magisk を入れるのは、それでも足りないと分かってからでよい。
-
-もし入れるなら、`cronos` は TWRP が使えるので Magisk APK を `.zip` にリネームして焼き、再起動後に Magisk アプリで直接インストールする流れ。**先に TWRP バックアップを取ること。** この機種は BROM USBDL が無く、失敗すると戻せない。
-
-参考: [XDA: [UNLOCK][ROOT][TWRP][UNBRICK] Echo Show 5 2nd Gen (cronos)](https://xdaforums.com/t/unlock-root-twrp-unbrick-amazon-echo-show-5-2nd-gen-2021-cronos.4772596/)
-
-## ロードマップ
-
-- [x] **1. 土台** — ランチャー化、大時計、日付、診断オーバーレイ、端末セットアップ
-  - release APK 1.8MB、ユニットテスト 61 件、スクリーンショットテスト 9 枚、実機で動作確認済み
-- [x] **2a. 夜間モード（減光）** — プラットフォーム署名 + sysfs 直書きで raw 1 まで到達
-- [x] **2b. 消灯と自動復帰** — バックライト 0、タップと照度の立ち上がりで復帰
-- [x] **3. 設定層** — DataStore による永続化、端末内 HTTP サーバ（WebCtl）で設定とログ
-  - [ ] 自己更新（APK の投入）はまだ
-- [x] **4. 天気** — 気象庁 JSON、右カラムの実装
-- [x] **5. タイマー / アラーム / TTS** — Alexa が消えた穴を埋める
-- [ ] **6. 連携**
-  - [x] ゴミの日
-  - [ ] ICS カレンダー、フォト、MQTT / Home Assistant
-
-## 構成
-
-```
-app/src/main/java/com/shsw228/showdeck/
-├── MainActivity.kt          ランチャー本体。没入モード・輝度・長押し診断
-├── DeckConfig.kt            据え置き前提の固定設定（3 で DataStore へ移す）
-├── admin/AdminReceiver.kt   Device Owner。ステータスバー無効化とホーム固定
-├── system/
-│   ├── Clock.kt             秒境界に同期する時刻 State
-│   ├── DeviceSetup.kt       端末設定をアプリ自身で適用する層
-│   ├── DeviceInfo.kt        LAN IP 取得と system UID 判定
-│   ├── Backlight.kt         sysfs 直書きと、書き戻しへの押し戻し
-│   ├── LightSensor.kt       照度センサ（消灯の復帰判定に使う）
-│   ├── Secrets.kt           Keystore による API キーの暗号化
-│   └── Su.kt                root シェルの薄いラッパ（現状は未使用の保険）
-├── DeckViewModel.kt         状態と処理の持ち主
-├── DeckUiState.kt           画面が要るものの集約
-├── DeckMode.kt              DAY / NIGHT / BLACKOUT の判定（純粋関数・テスト対象）
-├── settings/
-│   ├── DeckSettings.kt      実行時に変えられる設定
-│   └── SettingsStore.kt     DataStore による永続化
-├── calendar/
-│   ├── Calendar.kt          予定の型（純粋関数・テスト対象）
-│   ├── IcsParser.kt         ICS の解析と繰り返しの展開（純粋関数・テスト対象）
-│   └── CalendarRepository.kt 購読とディスクキャッシュ
-├── weather/
-│   ├── Weather.kt           OpenWeatherMap の解析（純粋関数・テスト対象）
-│   └── WeatherRepository.kt 取得とディスクキャッシュ
-├── alert/
-│   ├── AlertScheduler.kt    タイマーとアラームの発報判定（テスト対象）
-│   ├── Pomodoro.kt          区間の遷移（純粋関数・テスト対象）
-│   ├── CountdownTimer.kt    同時に走る複数タイマー（純粋関数・テスト対象）
-│   └── AlertPlayer.kt       アラーム音と TTS
-├── web/WebCtlServer.kt      端末内 HTTP サーバ（設定・状態・ログ・タイマー）
-└── ui/
-    ├── DeckScaffold.kt      ナビ・ヘッダ・行き先
-    ├── DeckActions.kt       画面から呼べる操作の束
-    ├── HomeScreen.kt        Home の 3 通りの並べ方
-    ├── HomeTiles.kt         Home に置く 4 種類のタイル
-    ├── WeatherScreen.kt     天気
-    ├── CalendarScreen.kt    予定
-    ├── FocusScreen.kt       ポモドーロ
-    ├── TimersScreen.kt      カウントダウン
-    ├── RollingClock.kt      桁送りする時計
-    ├── AlertOverlay.kt      発報中の全画面表示
-    ├── ControlOverlay.kt    長押しで開く操作パネル
-    ├── parts/               タイル・リング・錠剤ボタンなどの共通部品
-    └── theme/               配色・文字・寸法
-```
+判断の理由と実機での実測値は [docs/design.md](docs/design.md) にある。寸法の決め方、
+バックライトの押し戻し、ICS のどこまで対応しているか、`SystemUI` を止めなかった理由、
+CPU とメモリの測定値など。
